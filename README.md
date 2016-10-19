@@ -1,3 +1,6 @@
+## Status
+This is still very much a work-in-progress.
+
 RESTful service to listen for changes to a Cloudant database.
 
 Changes to a Cloudant database can trigger the invocation of an action, passing the action the body of the updated document.
