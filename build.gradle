@@ -1,2 +1,2 @@
 ext.dockerImageName = 'catalog_cloudanttrigger'
-apply from: '../../../gradle/docker.gradle'
+apply from: 'gradle/docker.gradle'
