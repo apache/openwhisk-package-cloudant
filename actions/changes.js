@@ -19,7 +19,7 @@ function main(msg) {
     var host = msg.host;
     var maxTriggers = msg.maxTriggers || 1000;
 
-    if (lifecycleEvent == 'CREATE') {
+    if (lifecycleEvent === 'CREATE') {
         // auth key for trigger
         var apiKey = msg.authKey;
         var auth = apiKey.split(':');
@@ -36,7 +36,7 @@ function main(msg) {
         input["callback"]["action"]["name"] = trigger;
 
         return cloudantHelper(provider_endpoint, 'put', replaceNameTrigger, auth, input);
-    } else if (lifecycleEvent == 'DELETE') {
+    } else if (lifecycleEvent === 'DELETE') {
         return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger);
     } else {
         return whisk.error('operation is neither CREATE or DELETE');
@@ -54,7 +54,7 @@ function cloudantHelper(endpoint, verb, name, auth, input) {
         options.auth = {
             user : auth[0],
             pass : auth[1]
-        }
+        };
     }
 
     if (verb === 'put') {
@@ -64,7 +64,7 @@ function cloudantHelper(endpoint, verb, name, auth, input) {
     var promise = new Promise(function(resolve, reject) {
       request(options, function(error, response, body) {
           console.log('cloudant trigger feed: done http request', '[error:]', error);
-          if (!error && response.statusCode == 200) {
+          if (!error && response.statusCode === 200) {
               console.log(body);
               resolve();
           } else {
