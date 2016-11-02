@@ -17,6 +17,8 @@ function main(msg) {
     var pass = msg.password;
     var includeDoc = msg.includeDoc || false;
     var host = msg.host;
+    var protocol = msg.protocol || 'https';
+    var port = msg.port;
     var maxTriggers = msg.maxTriggers || 1000;
 
     if (lifecycleEvent === 'CREATE') {
@@ -25,6 +27,9 @@ function main(msg) {
         var auth = apiKey.split(':');
         var input = {};
         input["accounturl"] = "https://" + host;
+        input["host"] = host;
+        input["port"] = port;
+        input["protocol"] = protocol;
         input["dbname"] = dbname;
         input["user"] = user;
         input["pass"] = pass;
