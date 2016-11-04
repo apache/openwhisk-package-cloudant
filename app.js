@@ -8,6 +8,7 @@ var express = require('express');
 var request = require('request');
 var bodyParser = require('body-parser');
 var logger = require('./Logger');
+var RequestAgent = require('agentkeepalive');
 
 var ProviderUtils = require('./lib/utils.js');
 var ProviderHealth = require('./lib/health.js');
@@ -37,6 +38,10 @@ var triggerFireLimit = 10000;
 // Maximum number of times to retry the invocation of an action
 // before deleting the associated trigger
 var retriesBeforeDelete = 5;
+
+// The maxSockets determines how many concurrent sockets the agent can have open per
+// host, is present in an agent by default with value ??.
+var maximumDbConnections = 50;
 
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
@@ -80,13 +85,17 @@ function createTriggerDb () {
 
   var nanop = null;
 
+  var connectionAgent = new RequestAgent({
+    maxSockets: maximumDbConnections
+  });
+
   // no need for a promise here, but leaving code inplace until we prove out the question of cookie usage
   var promise = new Promise(function(resolve, reject) {
 
     logger.info('url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     resolve(createDatabase (nanop));
-    
+
   });
 
   return promise;
