@@ -150,7 +150,7 @@ $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" --shared yes cloud
 $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" --shared yes cloudant/exec-query-view \
     "$PACKAGE_HOME/actions/database-actions/exec-query-view.js" \
     -a description 'Call view in design document from database' \
-    -a parameters '[ {"name":"dbname", "required":true}, {"name":"docid", "required":true}, {"name":"view", "required":true}, {"name":"params", "required":false} ]' \
+    -a parameters '[ {"name":"dbname", "required":true}, {"name":"docid", "required":true}, {"name":"viewname", "required":true}, {"name":"params", "required":false} ]' \
     -p docid '' \
     -p viewname ''
 
