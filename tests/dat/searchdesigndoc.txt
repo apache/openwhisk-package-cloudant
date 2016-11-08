@@ -1,0 +1,15 @@
+{
+  "_id": "_design/test_design",
+  "views": {
+    "test_view": {
+      "map": "function (doc) {\n  emit(doc._id, 1);\n}"
+    }
+  },
+  "language": "javascript",
+  "indexes": {
+    "test_search": {
+      "analyzer": "standard",
+      "index": "function (doc) {\n  index(\"date\", doc.date);\n}"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "ddoc":"test-query-index",
+  "name": "test-query-index",
+  "type": "json", 
+  "index": {
+    "fields": ["date"]
+  }
+}
