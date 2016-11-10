@@ -18,7 +18,7 @@ ADD package.json /cloudantTrigger/
 RUN cd /cloudantTrigger; npm install
 
 # App
-ADD . /cloudantTrigger
+ADD provider/. /cloudantTrigger/
 
 EXPOSE 8080
 
