@@ -18,7 +18,7 @@ module.exports = function(
     this.triggerDB = triggerDB;
     this.routerHost = routerHost;
 
-    this.logger.info (tid, 'utils', 'recieved database to store triggers: ' + triggerDB);
+    this.logger.info (tid, 'utils', 'received database to store triggers: ' + triggerDB);
 
     // this is the default trigger fire limit (in the event that is was not set during trigger creation)
     this.defaultTriggerFireLimit = constants.DEFAULT_TRIGGER_COUNT;
@@ -99,7 +99,7 @@ module.exports = function(
             	  logger.info(tid, method, 'retries left:', triggerHandle.retriesLeft);
             	  
                   if (triggerHandle.triggersLeft === -1) {
-                	  logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinately many times');
+                	  logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
                       that.unlimitedTriggerFires = true;
                   } else {
                 	  that.unlimitedTriggerFires = false;
@@ -163,13 +163,13 @@ module.exports = function(
         var method = 'initTrigger';
 
         // validate parameters here
-        logger.info(tid, method, 'create has recieved the following request args', JSON.stringify(obj));
+        logger.info(tid, method, 'create has received the following request args', JSON.stringify(obj));
 
         // if the trigger creation request has not set the max trigger fire limit
         // we will set it here (default value can be updated in ./constants.js)
         if (!obj.maxTriggers) {
         	logger.info(tid, method, 'maximum trigger fires has not been set by requester.  setting it to the default value of infinity.');
-        	logger.info(tid, method, 'setting trigger fire limit', that.defaultTriggerFireLimit)
+        	logger.info(tid, method, 'setting trigger fire limit', that.defaultTriggerFireLimit);
         	obj.maxTriggers = that.defaultTriggerFireLimit;
         } else {
             logger.info(tid, method, 'maximum trigger fires has been set to:', obj.maxTriggers);
@@ -220,7 +220,7 @@ module.exports = function(
                     var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
 
                     if (cloudantTrigger.triggersLeft === -1) {
-                  	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinately many times');
+                  	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
                         that.unlimitedTriggerFires = true;
                     } else {
                         that.unlimitedTriggerFires = false;
@@ -340,7 +340,7 @@ module.exports = function(
 
         // only manage trigger fires if they are not infinite
         if (!that.unlimitedTriggerFires) {
-      	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinately many times');
+      	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
             dataTrigger.triggersLeft--;
         }
 

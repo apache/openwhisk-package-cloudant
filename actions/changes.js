@@ -31,7 +31,7 @@ function main(msg) {
         password: "",
         triggerName: "",
         username: ""
-    }
+    };
 
     if (lifecycleEvent === 'CREATE') {
 
@@ -88,8 +88,7 @@ function main(msg) {
     } else if (lifecycleEvent === 'DELETE') {
         return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger);
     } else {
-    	var eMsg = 'operation is neither CREATE or DELETE';
-    	whisk.error(eMsg);
+    	return whisk.error('operation is neither CREATE or DELETE');
     }
 }
 
