@@ -28,7 +28,7 @@ module.exports = function(tid, logger, utils) {
     var id = req.params.id;
     var trigger = utils.initTrigger(args, id);
     // 10 is number of retries to create a trigger.
-    var promise = utils.createTrigger(trigger, 10);
+    var promise = utils.createTrigger(trigger, utils.retryCount);
     promise.then(function(newTrigger) {
         logger.info(tid, method, "Trigger was added and database is confirmed.", newTrigger);
         utils.addTriggerToDB(newTrigger, res);

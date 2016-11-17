@@ -15,13 +15,58 @@ function main(msg) {
     var dbname = msg.dbname;
     var user = msg.username;
     var pass = msg.password;
-    var includeDoc = msg.includeDoc || false;
     var host = msg.host;
     var protocol = msg.protocol || 'https';
     var port = msg.port;
-    var maxTriggers = msg.maxTriggers || 1000;
+    var maxTriggers = msg.maxTriggers;
+
+    var validProperties = {
+        authKey: "",
+        bluemixServiceName: "",
+        dbname: "",
+        host: "",
+        lifecycleEvent: "",
+        maxTriggers: "",
+        package_endpoint: "",
+        password: "",
+        triggerName: "",
+        username: ""
+    }
 
     if (lifecycleEvent === 'CREATE') {
+
+        // handle any invalid parameters here
+    	for(var prop in msg) {
+    	    if (!(prop in validProperties)) {
+    	    	var eMsg = 'cloudant trigger feed: invalid property not supported: ' + prop;
+    	    	console.log(eMsg,'[error:]', whisk.error(eMsg));
+                return;
+    	    }
+    	}
+
+    	// check for missing mandatory parameters
+        var paramError;
+        if (!dbname) {
+        	paramError = 'cloudant trigger feed: missing dbname parameter - ' + dbname;
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
+        if (!host) {
+        	paramError = 'cloudant trigger feed: missing host parameter - ' + host;
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
+        if (!user) {
+        	paramError = 'cloudant trigger feed: missing username parameter - ' + user;
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
+        if (!pass) {
+        	paramError = 'cloudant trigger feed: missing password parameter - ' + pass;
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
+
         // auth key for trigger
         var apiKey = msg.authKey;
         var auth = apiKey.split(':');
@@ -33,7 +78,6 @@ function main(msg) {
         input["dbname"] = dbname;
         input["user"] = user;
         input["pass"] = pass;
-        input["includeDoc"] = includeDoc;
         input["apikey"] = apiKey;
         input["maxTriggers"] = maxTriggers;
         input["callback"] = {};
@@ -44,7 +88,8 @@ function main(msg) {
     } else if (lifecycleEvent === 'DELETE') {
         return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger);
     } else {
-        return whisk.error('operation is neither CREATE or DELETE');
+    	var eMsg = 'operation is neither CREATE or DELETE';
+    	whisk.error(eMsg);
     }
 }
 
