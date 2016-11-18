@@ -45,116 +45,116 @@ module.exports = function(
     // Add a trigger: listen for changes and dispatch.
     this.createTrigger = function(dataTrigger, retryCount) {
 
-      var method = 'createTrigger';
+        var method = 'createTrigger';
 
-      // Cleanup connection when trigger is deleted.
-      var sinceToUse = dataTrigger.since ? dataTrigger.since : "now";
-      var nanoConnection;
-      var dbURL;
-      var dbProtocol = 'https'; // unless specified protocol will default to https
-      if (dataTrigger.protocol) {
-        dbProtocol = dataTrigger.protocol;
-      }
+        // Cleanup connection when trigger is deleted.
+        var sinceToUse = dataTrigger.since ? dataTrigger.since : "now";
+        var nanoConnection;
+        var dbURL;
+        var dbProtocol = 'https'; // unless specified protocol will default to https
+        if (dataTrigger.protocol) {
+            dbProtocol = dataTrigger.protocol;
+        }
 
-      // unless specified host will default to accounturl without the https:// in front
-      var dbHost;
-      if (dataTrigger.host) {
-    	  dbHost = dataTrigger.host;
-      } else {
-    	  dbHost = dataTrigger.accounturl;
-    	  dbHost = dbHost.replace('https://','');
-      }
+        // unless specified host will default to accounturl without the https:// in front
+        var dbHost;
+        if (dataTrigger.host) {
+    	    dbHost = dataTrigger.host;
+        } else {
+    	    dbHost = dataTrigger.accounturl;
+    	    dbHost = dbHost.replace('https://','');
+        }
 
-      // both couch and cloudant should have their URLs in the username:password@host format
-      dbURL = dbProtocol + '://' + dataTrigger.user + ':' + dataTrigger.pass + '@' + dbHost;
+        // both couch and cloudant should have their URLs in the username:password@host format
+        dbURL = dbProtocol + '://' + dataTrigger.user + ':' + dataTrigger.pass + '@' + dbHost;
 
-      // add port if specified
-      if (dataTrigger.port) {
-        dbURL = dbURL + ':' + dataTrigger.port;
-      }
+        // add port if specified
+        if (dataTrigger.port) {
+            dbURL = dbURL + ':' + dataTrigger.port;
+        }
 
-      logger.info(tid, method,'found trigger url: ', dbURL);
-      nanoConnection = require('nano')(dbURL);
+        logger.info(tid, method,'found trigger url: ', dbURL);
+        nanoConnection = require('nano')(dbURL);
 
-      try {
+        try {
     	  
-          var triggeredDB = nanoConnection.use(dataTrigger.dbname);
+            var triggeredDB = nanoConnection.use(dataTrigger.dbname);
           
-          // Listen for changes on this database.
-          // always set the include doc setting to false
-          var feed = triggeredDB.follow({since: sinceToUse, include_docs: false});
+            // Listen for changes on this database.
+            // always set the include doc setting to false
+            var feed = triggeredDB.follow({since: sinceToUse, include_docs: false});
 
-          dataTrigger.feed = feed;
-          that.triggers[dataTrigger.id] = dataTrigger;
+            dataTrigger.feed = feed;
+            that.triggers[dataTrigger.id] = dataTrigger;
 
-          feed.on('change', function (change) {
-              var triggerHandle = that.triggers[dataTrigger.id];
+            feed.on('change', function (change) {
+                var triggerHandle = that.triggers[dataTrigger.id];
 
-              logger.info(tid, method, 'Got change from', dataTrigger.dbname, change, triggerHandle);
-              logger.info(tid, method, 'Found triggerHandle', triggerHandle);
+                logger.info(tid, method, 'Got change from', dataTrigger.dbname, change, triggerHandle);
+                logger.info(tid, method, 'Found triggerHandle', triggerHandle);
         	  
-              if (triggerHandle && triggerHandle.retriesLeft > 0) {
+                if (triggerHandle && triggerHandle.retriesLeft > 0) {
             	  
-            	  logger.info(tid, method, 'triggers left:', triggerHandle.triggersLeft);
-            	  logger.info(tid, method, 'retries left:', triggerHandle.retriesLeft);
+            	    logger.info(tid, method, 'triggers left:', triggerHandle.triggersLeft);
+            	    logger.info(tid, method, 'retries left:', triggerHandle.retriesLeft);
             	  
-                  if (triggerHandle.triggersLeft === -1) {
-                	  logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
-                      that.unlimitedTriggerFires = true;
-                  } else {
-                	  that.unlimitedTriggerFires = false;
-                  }
+                    if (triggerHandle.triggersLeft === -1) {
+                	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
+                        that.unlimitedTriggerFires = true;
+                    } else {
+                	    that.unlimitedTriggerFires = false;
+                    }
 
-                  if(that.unlimitedTriggerFires || triggerHandle.triggersLeft > 0) {
-                      try {
-                    	  logger.info(tid, method, 'found a valid trigger.  lets fire this trigger', triggerHandle);
-                          that.fireTrigger(dataTrigger.id, change);
-                      } catch (e) {
-                          logger.error(tid, method, 'Exception occurred in callback', e);
-                      }
-                  }
-              }
-          });
+                    if (that.unlimitedTriggerFires || triggerHandle.triggersLeft > 0) {
+                        try {
+                    	    logger.info(tid, method, 'found a valid trigger.  lets fire this trigger', triggerHandle);
+                            that.fireTrigger(dataTrigger.id, change);
+                        } catch (e) {
+                            logger.error(tid, method, 'Exception occurred in callback', e);
+                        }
+                    }
+                }
+            });
 
-          feed.follow();
+            feed.follow();
 
-          return new Promise(function(resolve, reject) {
+            return new Promise(function(resolve, reject) {
 
-          feed.on('error', function (err) {
-              logger.error(tid, method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
-              // revive the feed if an error occured for now
-              // the user should be in charge of removing the feeds
-              logger.info(tid, "attempting to recreate trigger", dataTrigger.id);
-              that.deleteTrigger(dataTrigger.id);
-              dataTrigger.since = "now";
-              if (retryCount > 0) {
-                  var addTriggerPromise = that.createTrigger(dataTrigger, (retryCount - 1));
-                  addTriggerPromise.then(function(trigger) {
-                      logger.error(tid, method, "Retry Count:", (retryCount - 1));
-                      resolve(trigger);
-                  }, function(err) {
-                      reject(err);
-                  });
-              } else {
-                  logger.error(tid, method, "Trigger's feed produced too many errors. Deleting the trigger", dataTrigger.id, '(db ' + dataTrigger.dbname + ')');
-                  reject({
-                      error: err,
-                      message: "Trigger's feed produced too many errors. Deleting the trigger " + dataTrigger.id
-                  });
-              }
-          });
+            feed.on('error', function (err) {
+                logger.error(tid, method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
+                // revive the feed if an error occured for now
+                // the user should be in charge of removing the feeds
+                logger.info(tid, "attempting to recreate trigger", dataTrigger.id);
+                that.deleteTrigger(dataTrigger.id);
+                dataTrigger.since = "now";
+                if (retryCount > 0) {
+                    that.createTrigger(dataTrigger, (retryCount - 1))
+                    .then(function(trigger) {
+                        logger.error(tid, method, "Retry Count:", (retryCount - 1));
+                        resolve(trigger);
+                    }, function(err) {
+                        reject(err);
+                    });
+                } else {
+                    logger.error(tid, method, "Trigger's feed produced too many errors. Deleting the trigger", dataTrigger.id, '(db ' + dataTrigger.dbname + ')');
+                    reject({
+                        error: err,
+                        message: "Trigger's feed produced too many errors. Deleting the trigger " + dataTrigger.id
+                    });
+                }
+            });
 
-          feed.on('confirm', function (dbObj) {
-              logger.info(tid, method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
-              resolve(dataTrigger);
-          });
+            feed.on('confirm', function (dbObj) {
+                logger.info(tid, method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
+                resolve(dataTrigger);
+            });
 
         });
         
-      } catch (err) {
-          logger.info('caught an exception: ' + err);
-          return Promise.reject(err);
-      }  
+        } catch (err) {
+            logger.info('caught an exception: ' + err);
+            return Promise.reject(err);
+        }
 
     };
 
@@ -333,8 +333,8 @@ module.exports = function(
         logger.info(tid, method, 'fireTrigger: form =', form);
         logger.info(tid, method, 'for trigger', id, 'invoking action', triggerName, 'with db update', JSON.stringify(form));
 
-        var host = 'https://'+routerHost+':'+443;
-        var uri = host+'/api/v1/namespaces/' + triggerObj.namespace +'/triggers/'+triggerObj.name;
+        var host = 'https://' + routerHost + ':' + 443;
+        var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
         var auth = apikey.split(':');
         logger.info(tid, method, uri, auth, form);
 
@@ -386,9 +386,9 @@ module.exports = function(
         });
     };
 
-    this.parseQName = function (qname) {
+    this.parseQName = function (qname, separator) {
         var parsed = {};
-        var delimiter = '/';
+        var delimiter = separator || '/';
         var defaultNamespace = '_';
         if (qname && qname.charAt(0) === delimiter) {
             var parts = qname.split(delimiter);

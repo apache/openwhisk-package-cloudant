@@ -36,7 +36,7 @@ function main(msg) {
     if (lifecycleEvent === 'CREATE') {
 
         // handle any invalid parameters here
-    	for(var prop in msg) {
+    	for (var prop in msg) {
     	    if (!(prop in validProperties)) {
     	    	var eMsg = 'cloudant trigger feed: invalid property not supported: ' + prop;
     	    	console.log(eMsg,'[error:]', whisk.error(eMsg));
@@ -69,62 +69,55 @@ function main(msg) {
 
         // auth key for trigger
         var apiKey = msg.authKey;
-        var auth = apiKey.split(':');
         var input = {};
-        input["accounturl"] = "https://" + host;
-        input["host"] = host;
-        input["port"] = port;
-        input["protocol"] = protocol;
-        input["dbname"] = dbname;
-        input["user"] = user;
-        input["pass"] = pass;
-        input["apikey"] = apiKey;
-        input["maxTriggers"] = maxTriggers;
-        input["callback"] = {};
-        input["callback"]["action"] = {};
-        input["callback"]["action"]["name"] = trigger;
+        input.accounturl = "https://" + host;
+        input.host = host;
+        input.port = port;
+        input.protocol = protocol;
+        input.dbname = dbname;
+        input.user = user;
+        input.pass = pass;
+        input.apikey = apiKey;
+        input.maxTriggers = maxTriggers;
+        input.callback = {};
+        input.callback.action = {};
+        input.callback.action.name = trigger;
 
-        return cloudantHelper(provider_endpoint, 'put', replaceNameTrigger, auth, input);
+        return cloudantHelper(provider_endpoint, 'put', replaceNameTrigger, input);
     } else if (lifecycleEvent === 'DELETE') {
-        return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger);
+
+        var jsonOptions = {};
+        jsonOptions.apikey = msg.authKey;
+
+        return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger, jsonOptions);
     } else {
     	return whisk.error('operation is neither CREATE or DELETE');
     }
 }
 
-function cloudantHelper(endpoint, verb, name, auth, input) {
-    var uri = 'http://' + endpoint + '/cloudanttriggers/' + name;
-    var options = {
-        method : verb,
-        uri : uri
-    };
-
-    if(auth){
-        options.auth = {
-            user : auth[0],
-            pass : auth[1]
-        };
-    }
-
-    if (verb === 'put') {
-        options.json = input;
-    }
-
+function cloudantHelper(endpoint, verb, name, input) {
+    var url = 'http://' + endpoint + '/cloudanttriggers/' + name;
     var promise = new Promise(function(resolve, reject) {
-      request(options, function(error, response, body) {
-          console.log('cloudant trigger feed: done http request', '[error:]', error);
-          if (!error && response.statusCode === 200) {
-              console.log(body);
-              resolve();
-          } else {
-              if (response) {
-                  console.log('response code:', response.statusCode);
-              } else {
-                  console.log('no response');
-              }
-              reject(error);
-          }
-      });
+        request({
+            method : verb,
+            url : url,
+            json: input
+        }, function(error, response, body) {
+            console.log('cloudant trigger feed: done http request');
+            if (!error && response.statusCode === 200) {
+                console.log(body);
+                resolve();
+            }
+            else {
+                if (response) {
+                    console.log('response code:', response.statusCode);
+                    reject(body);
+                } else {
+                    console.log('no response');
+                    reject(error);
+                }
+            }
+        });
     });
 
     return promise;
