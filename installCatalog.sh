@@ -44,7 +44,7 @@ echo Installing Cloudant package.
 
 $WSK_CLI -i --apihost "$APIHOST" package update --auth "$AUTH"  --shared yes cloudant \
     -a description "Cloudant database service" \
-    -a parameters '[ {"name":"bluemixServiceName", "required":false, "bindTime":true}, {"name":"username", "required":true, "bindTime":true, "description": "Your Cloudant username"}, {"name":"password", "required":true, "type":"password", "bindTime":true, "description": "Your Cloudant password"}, {"name":"host", "required":true, "bindTime":true, "description": "This is usually your username.cloudant.com"}, {"name":"dbname", "required":false, "description": "The name of your Cloudant database"}, {"name":"includeDoc", "required":false, "type": "boolean", "description": "Should the return value include the full documents, or only the document ID?"}, {"name":"overwrite", "required":false, "type": "boolean"} ]' \
+    -a parameters '[ {"name":"bluemixServiceName", "required":false, "bindTime":true}, {"name":"username", "required":true, "bindTime":true, "description": "Your Cloudant username"}, {"name":"password", "required":true, "type":"password", "bindTime":true, "description": "Your Cloudant password"}, {"name":"host", "required":true, "bindTime":true, "description": "This is usually your username.cloudant.com"}, {"name":"dbname", "required":false, "description": "The name of your Cloudant database"}, {"name":"overwrite", "required":false, "type": "boolean"} ]' \
     -p package_endpoint "$CLOUDANT_PROVIDER_ENDPOINT" \
     -p bluemixServiceName 'cloudantNoSQLDB' \
     -p host '' \
@@ -58,7 +58,7 @@ $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" --shared yes cloud
     -t 90000 \
     -a feed true \
     -a description 'Database change feed' \
-    -a parameters '[ {"name":"dbname", "required":true}, {"name":"includeDoc", "required":false} ]'
+    -a parameters '[ {"name":"dbname", "required":true} ]'
 
 # Cloudant account actions
 
