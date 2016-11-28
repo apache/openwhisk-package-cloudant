@@ -18,7 +18,7 @@ function main(msg) {
     var host = msg.host;
     var protocol = msg.protocol || 'https';
     var port = msg.port;
-    var maxTriggers = msg.maxTriggers;
+    var maxTriggers = msg.maxTriggers || -1;
 
     var validProperties = {
         authKey: "",
