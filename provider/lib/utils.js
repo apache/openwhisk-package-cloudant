@@ -182,11 +182,6 @@ module.exports = function(
             logger.warn(tid, method, 'cloudant trigger feed: includeDoc parameter is no longer supported and will be ignored.');
         }
 
-        var includeDoc;
-        if (obj.includeDoc) {
-            includeDoc = ((obj.includeDoc === true || obj.includeDoc.toString().trim().toLowerCase() === 'true')) || 'false';
-        }
-        
         var trigger = {
             id: id,
             accounturl: obj.accounturl,

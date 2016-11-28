@@ -44,6 +44,11 @@ function main(msg) {
     	    }
     	}
 
+        // if the max triggers has not been set we will set it to infinity here
+        if (!maxTriggers) {
+            maxTriggers = '-1';
+        }
+
     	// check for missing mandatory parameters
         var paramError;
         if (!dbname) {
