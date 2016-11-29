@@ -20,7 +20,6 @@ import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 
 import catalog.CloudantUtil
-import common.JsHelpers
 import common.TestHelpers
 import common.Wsk
 import common.WskProps
@@ -32,8 +31,7 @@ import spray.json.pimpAny
 @RunWith(classOf[JUnitRunner])
 class CloudantBindingTests extends FlatSpec
     with TestHelpers
-    with WskTestHelpers
-    with JsHelpers {
+    with WskTestHelpers {
 
     val wskprops = WskProps()
     val wsk = new Wsk
