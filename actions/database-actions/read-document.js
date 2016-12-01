@@ -10,7 +10,7 @@ function main(message) {
   }
   var cloudant = cloudantOrError;
   var dbName = message.dbname;
-  var docId = message.docid;
+  var docId = message.docid || message.id;
   var params = {};
 
   if(!dbName) {

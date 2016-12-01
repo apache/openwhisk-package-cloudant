@@ -324,6 +324,7 @@ module.exports = function(
             };
             form.whisk = whiskPayloadObject;
         }
+        form.dbname = dataTrigger.dbname;
 
         logger.info(tid, method, 'fireTrigger: form =', form);
         logger.info(tid, method, 'for trigger', id, 'invoking action', triggerName, 'with db update', JSON.stringify(form));
