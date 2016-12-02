@@ -8,7 +8,8 @@ module.exports = function(
   app,
   retriesBeforeDelete,
   triggerDB,
-  routerHost
+  routerHost,
+  supportIncludeDocs
 ) {
 
     this.tid = tid;
@@ -79,10 +80,13 @@ module.exports = function(
         try {
     	  
             var triggeredDB = nanoConnection.use(dataTrigger.dbname);
-          
+
+            var includeDocs = false;
+            if (supportIncludeDocs === 'true' && (dataTrigger.includeDoc === true || dataTrigger.includeDoc === 'true')) {
+                includeDocs = true;
+            }
             // Listen for changes on this database.
-            // always set the include doc setting to false
-            var feed = triggeredDB.follow({since: sinceToUse, include_docs: false});
+            var feed = triggeredDB.follow({since: sinceToUse, include_docs: includeDocs});
 
             dataTrigger.feed = feed;
             that.triggers[dataTrigger.id] = dataTrigger;
@@ -179,7 +183,7 @@ module.exports = function(
         // (note: this will only be the set for old feeds.  we no longer allow 
         // this to be set for newly created feeds).
         if (obj.includeDoc && (obj.includeDoc === true || obj.includeDoc.toString().trim().toLowerCase() === 'true')) {
-            logger.warn(tid, method, 'cloudant trigger feed: includeDoc parameter is no longer supported and will be ignored.');
+            logger.warn(tid, method, 'cloudant trigger feed: includeDoc parameter is no longer supported.');
         }
 
         var trigger = {

@@ -28,6 +28,9 @@ var tid = "??";
 // Whisk API Router Host
 var routerHost = process.env.ROUTER_HOST || 'localhost';
 
+// Support includeDocs=true for triggers who existed before the removal of includeDocs
+var supportIncludeDocs = process.env.SUPPORT_INCLUDE_DOCS || 'false';
+
 // Maximum number of times to retry the invocation of an action
 // before deleting the associated trigger
 var retriesBeforeDelete = constants.RETRIES_BEFORE_DELETE;
@@ -99,7 +102,7 @@ function init(server) {
 
       logger.info(tid, 'init', 'trigger storage database details: ', nanoDb);
 
-      var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, routerHost);
+      var providerUtils = new ProviderUtils (tid, logger, app, retriesBeforeDelete, nanoDb, routerHost, supportIncludeDocs);
       var providerRAS = new ProviderRAS (tid, logger, providerUtils);
       var providerHealth = new ProviderHealth (tid, logger, providerUtils);
       var providerUpdate = new ProviderUpdate (tid, logger, providerUtils);
