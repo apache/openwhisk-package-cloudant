@@ -20,32 +20,15 @@ function main(msg) {
     var port = msg.port;
     var maxTriggers = msg.maxTriggers;
 
-    var validProperties = {
-        authKey: "",
-        bluemixServiceName: "",
-        dbname: "",
-        host: "",
-        lifecycleEvent: "",
-        maxTriggers: "",
-        package_endpoint: "",
-        password: "",
-        triggerName: "",
-        username: ""
-    };
-
     if (lifecycleEvent === 'CREATE') {
 
-        // handle any invalid parameters here
-    	for (var prop in msg) {
-    	    if (!(prop in validProperties)) {
-    	    	var eMsg = 'cloudant trigger feed: invalid property not supported: ' + prop;
-    	    	console.log(eMsg,'[error:]', whisk.error(eMsg));
-                return;
-    	    }
-    	}
-
-    	// check for missing mandatory parameters
+    	// check for parameter errors
         var paramError;
+        if (msg.includeDoc) {
+            paramError = 'cloudant trigger feed: includeDoc parameter is no longer supported';
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
         if (!dbname) {
         	paramError = 'cloudant trigger feed: missing dbname parameter - ' + dbname;
             console.log(paramError, '[error:]', whisk.error(paramError));
