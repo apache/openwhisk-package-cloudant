@@ -37,7 +37,7 @@ import common.WskActorSystem
  * Tests for Cloudant trigger service
  */
 @RunWith(classOf[JUnitRunner])
-class CloudantFeedTests
+class CloudantTriggerPersistencyTest
     extends FlatSpec
     with TestHelpers
     with WskTestHelpers
