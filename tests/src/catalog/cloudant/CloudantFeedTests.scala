@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package system.packages
+package catalog.cloudant
 
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
