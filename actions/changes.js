@@ -9,6 +9,7 @@ function main(msg) {
     // whisk trigger to fire
     var trigger = msg.triggerName;
     var replaceNameTrigger = trigger.replace(/\//g, ":");
+    var namespace = parseQName(trigger).namespace;
 
     // configuration parameters
     var provider_endpoint = msg.package_endpoint;
@@ -46,6 +47,11 @@ function main(msg) {
         }
         if (!pass) {
         	paramError = 'cloudant trigger feed: missing password parameter - ' + pass;
+            console.log(paramError, '[error:]', whisk.error(paramError));
+            return;
+        }
+        if (namespace === "_") {
+            paramError = 'You must supply a non-default namespace.';
             console.log(paramError, '[error:]', whisk.error(paramError));
             return;
         }
@@ -104,4 +110,19 @@ function cloudantHelper(endpoint, verb, name, input) {
     });
 
     return promise;
+}
+
+function parseQName(qname) {
+    var parsed = {};
+    var delimiter = '/';
+    var defaultNamespace = '_';
+    if (qname && qname.charAt(0) === delimiter) {
+        var parts = qname.split(delimiter);
+        parsed.namespace = parts[1];
+        parsed.name = parts.length > 2 ? parts.slice(2).join(delimiter) : '';
+    } else {
+        parsed.namespace = defaultNamespace;
+        parsed.name = qname;
+    }
+    return parsed;
 }
