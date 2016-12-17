@@ -23,14 +23,11 @@ import catalog.CloudantUtil
 import common.TestHelpers
 import common.Wsk
 import common.WskProps
+import common.WhiskProperties
 import common.WskTestHelpers
 import spray.json.DefaultJsonProtocol.IntJsonFormat
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.pimpAny
-import whisk.core.WhiskConfig
-import whisk.core.WhiskConfig.dbPassword
-import whisk.core.WhiskConfig.dbPrefix
-import whisk.core.WhiskConfig.dbUsername
 import common.WskActorSystem
 
 /**
@@ -43,25 +40,26 @@ class CloudantTriggerPersistencyTest
     with WskTestHelpers
     with WskActorSystem {
 
-    val config = new WhiskConfig(Map(
-        dbUsername -> null,
-        dbPassword -> null,
-        dbPrefix -> null))
+    val dbUsername = WhiskProperties.getProperty("db.username")
+    val dbPassword = WhiskProperties.getProperty("db.password")
+    val dbPrefix = WhiskProperties.getProperty("db.prefix")
 
     val wskprops = WskProps()
     val wsk = new Wsk
 
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
 
-    val cloudantTriggerDBCreds = new CloudantUtil.Credential(config.dbUsername, config.dbPassword, config.dbPrefix + "cloudanttrigger")
+    val cloudantTriggerDBCreds = new CloudantUtil.Credential(dbUsername, dbPassword, dbPrefix + "cloudanttrigger")
 
     behavior of "Cloudant trigger service"
 
     it should "persist trigger into Cloudant" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
+            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
+            val trigger = "/" + namespace + "/" + triggerName
+            val packageName = "/" + namespace + "/dummyCloudantPackage"
             val feed = "changes"
             try {
                 CloudantUtil.setUp(myCloudantCreds)
@@ -76,7 +74,7 @@ class CloudantTriggerPersistencyTest
                 }
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = wsk.trigger.create(triggerName,
+                val feedCreationResult = wsk.trigger.create(trigger,
                     feed = Some(s"$packageName/$feed"),
                     parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -87,11 +85,11 @@ class CloudantTriggerPersistencyTest
                 feedCreationResult.stdout should include("ok")
 
                 println("Getting cloudanttrigger doc from the cloudant")
-                val docId = s":${wp.namespace}:${triggerName}";
+                val docId = s":${namespace}:${triggerName}"
                 val persistedResponse = CloudantUtil.getDocument(cloudantTriggerDBCreds, docId)
 
                 println("Deleting cloudant trigger feed.")
-                val feedDeletionResult = wsk.trigger.delete(triggerName)
+                val feedDeletionResult = wsk.trigger.delete(trigger)
                 feedDeletionResult.stdout should include("ok")
 
                 println("Getting cloudanttrigger doc from the cloudant")
