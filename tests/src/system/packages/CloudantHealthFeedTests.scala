@@ -48,9 +48,8 @@ class CloudantHealthFeedTests
     it should "bind cloudant package and fire changes trigger using changes feed" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
-            val triggerName = "/" + namespace + s"/dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "/" + namespace + "/dummyCloudantPackage"
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
             try {
@@ -111,9 +110,8 @@ class CloudantHealthFeedTests
     it should "should not fail when specifying triggers above 1 Million" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
-            val triggerName = "/" + namespace + s"/dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "/" + namespace + "/dummyCloudantPackage"
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
             try {
@@ -144,13 +142,12 @@ class CloudantHealthFeedTests
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
     }
-    
+
     it should "only invoke as many times as specified" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
-            val triggerName = "/" + namespace + s"/dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "/" + namespace + "/dummyCloudantPackage"
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
             try {
@@ -198,9 +195,8 @@ class CloudantHealthFeedTests
 
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
-            val triggerName = "/" + namespace + s"/dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "/" + namespace + "/dummyCloudantPackage"
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
             try {

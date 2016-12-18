@@ -6,10 +6,11 @@ function main(msg) {
     // lifecycleEvent is one of [ create, delete ]
     var lifecycleEvent = (msg.lifecycleEvent || 'CREATE').trim().toUpperCase();
 
-    // whisk trigger to fire
-    var trigger = msg.triggerName;
+    var namespace = process.env.__OW_NAMESPACE;
+    var triggerName = parseQName(msg.triggerName).name;
+
+    var trigger = '/' + namespace + '/' + triggerName;
     var replaceNameTrigger = trigger.replace(/\//g, ":");
-    var namespace = parseQName(trigger).namespace;
 
     // configuration parameters
     var provider_endpoint = msg.package_endpoint;
