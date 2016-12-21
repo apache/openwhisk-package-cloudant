@@ -56,7 +56,7 @@ class CloudantTriggerPersistencyTest
     it should "persist trigger into Cloudant" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-            val namespace = wsk.namespace.list().stdout.trim.split("\n").last
+            val namespace = "_"
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
             val trigger = "/" + namespace + "/" + triggerName
             val packageName = "/" + namespace + "/dummyCloudantPackage"
