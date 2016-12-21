@@ -53,7 +53,8 @@ class CloudantTriggerPersistencyTest
 
     behavior of "Cloudant trigger service"
 
-    it should "persist trigger into Cloudant" in withAssetCleaner(wskprops) {
+    
+    ignore should "persist trigger into Cloudant" in withAssetCleaner(wskprops) {    
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val namespace = wsk.namespace.list().stdout.trim.split("\n").last
