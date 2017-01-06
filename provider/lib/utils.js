@@ -78,7 +78,7 @@ module.exports = function(
         nanoConnection = require('nano')(dbURL);
 
         try {
-    	  
+
             var triggeredDB = nanoConnection.use(dataTrigger.dbname);
 
             var includeDocs = false;
@@ -96,12 +96,12 @@ module.exports = function(
 
                 logger.info(tid, method, 'Got change from', dataTrigger.dbname, change, triggerHandle);
                 logger.info(tid, method, 'Found triggerHandle', triggerHandle);
-        	  
+
                 if (triggerHandle && triggerHandle.retriesLeft > 0) {
-            	  
+
             	    logger.info(tid, method, 'triggers left:', triggerHandle.triggersLeft);
             	    logger.info(tid, method, 'retries left:', triggerHandle.retriesLeft);
-            	  
+
                     if (triggerHandle.triggersLeft === -1) {
                 	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
                         that.unlimitedTriggerFires = true;
@@ -154,7 +154,7 @@ module.exports = function(
             });
 
         });
-        
+
         } catch (err) {
             logger.info('caught an exception: ' + err);
             return Promise.reject(err);
@@ -180,7 +180,7 @@ module.exports = function(
         }
 
         // if we find that includeDoc is set to true we should warn user here
-        // (note: this will only be the set for old feeds.  we no longer allow 
+        // (note: this will only be the set for old feeds.  we no longer allow
         // this to be set for newly created feeds).
         if (obj.includeDoc && (obj.includeDoc === true || obj.includeDoc.toString().trim().toLowerCase() === 'true')) {
             logger.warn(tid, method, 'cloudant trigger feed: includeDoc parameter is no longer supported.');
