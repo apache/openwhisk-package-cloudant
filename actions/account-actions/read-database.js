@@ -6,12 +6,12 @@
 function main(message) {
   var cloudantOrError = getCloudantAccount(message);
   if (typeof cloudantOrError !== 'object') {
-    return whisk.error('getCloudantAccount returned an unexpected object type.');
+    return Promise.reject(cloudantOrError);
   }
   var cloudant = cloudantOrError;
   var dbName = message.dbname;
   if (!dbName) {
-    return whisk.error('dbname is required.');
+    return Promise.reject('dbname is required.');
   }
 
   return readDatabase(cloudant, dbName);
@@ -41,16 +41,13 @@ function getCloudantAccount(message) {
     cloudantUrl = message.url;
   } else {
     if (!message.host) {
-      whisk.error('cloudant account host is required.');
-      return;
+      return 'cloudant account host is required.';
     }
     if (!message.username) {
-      whisk.error('cloudant account username is required.');
-      return;
+      return 'cloudant account username is required.';
     }
     if (!message.password) {
-      whisk.error('cloudant account password is required.');
-      return;
+      return 'cloudant account password is required.';
     }
 
     cloudantUrl = "https://" + message.username + ":" + message.password + "@" + message.host;

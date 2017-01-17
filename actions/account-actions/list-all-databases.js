@@ -6,7 +6,7 @@
 function main(message) {
   var cloudantOrError = getCloudantAccount(message);
   if (typeof cloudantOrError !== 'object') {
-    return whisk.error('getCloudantAccount returned an unexpected object type.');
+    return Promise.reject(cloudantOrError);
   }
   var cloudant = cloudantOrError;
 
@@ -18,7 +18,7 @@ function listAllDatabases(cloudant) {
     cloudant.db.list(function(error, response) {
       if (!error) {
         console.log('success', response);
-        //Response is an array and only JSON objects can be passed to whisk.done
+        //Response is an array and only JSON objects can be passed
         var responseObj = {};
         responseObj.all_databases = response;
         resolve(responseObj);
@@ -40,16 +40,13 @@ function getCloudantAccount(message) {
     cloudantUrl = message.url;
   } else {
     if (!message.host) {
-      whisk.error('cloudant account host is required.');
-      return;
+      return 'cloudant account host is required.';
     }
     if (!message.username) {
-      whisk.error('cloudant account username is required.');
-      return;
+      return 'cloudant account username is required.';
     }
     if (!message.password) {
-      whisk.error('cloudant account password is required.');
-      return;
+      return 'cloudant account password is required.';
     }
 
     cloudantUrl = "https://" + message.username + ":" + message.password + "@" + message.host;

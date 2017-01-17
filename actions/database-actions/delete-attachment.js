@@ -6,7 +6,7 @@
 function main(message) {
   var cloudantOrError = getCloudantAccount(message);
   if (typeof cloudantOrError !== 'object') {
-    return whisk.error('getCloudantAccount returned an unexpected object type.');
+    return Promise.reject(cloudantOrError);
   }
   var cloudant = cloudantOrError;
   var dbName = message.dbname;
@@ -15,19 +15,19 @@ function main(message) {
   var params = {};
 
   if(!dbName) {
-    return whisk.error('dbname is required.');
+    return Promise.reject('dbname is required.');
   }
   if(!docId) {
-    return whisk.error('docid is required.');
+    return Promise.reject('docid is required.');
   }
   if(!attName) {
-    return whisk.error('attachmentname is required.');
+    return Promise.reject('attachmentname is required.');
   }
   //Add document revision to query if it exists
   if(typeof message.docrev !== 'undefined') {
     params.rev = message.docrev;
   } else {
-    return whisk.error('docrev is required.');
+    return Promise.reject('docrev is required.');
   }
 
   var cloudantDb = cloudant.use(dbName);
@@ -38,7 +38,7 @@ function main(message) {
     try {
       params = JSON.parse(message.params);
     } catch (e) {
-      return whisk.error('params field cannot be parsed. Ensure it is valid JSON.');
+      return Promise.reject('params field cannot be parsed. Ensure it is valid JSON.');
     }
   }
 
@@ -55,7 +55,7 @@ function deleteAttachment(cloudantDb, docId, attName, params) {
         console.log("success", response);
         resolve(response);
       } else {
-        console.log("error", error)
+        console.log("error", error);
         reject(error);
       }
     });
@@ -72,16 +72,13 @@ function getCloudantAccount(message) {
     cloudantUrl = message.url;
   } else {
     if (!message.host) {
-      whisk.error('cloudant account host is required.');
-      return;
+      return 'cloudant account host is required.';
     }
     if (!message.username) {
-      whisk.error('cloudant account username is required.');
-      return;
+      return 'cloudant account username is required.';
     }
     if (!message.password) {
-      whisk.error('cloudant account password is required.');
-      return;
+      return 'cloudant account password is required.';
     }
 
     cloudantUrl = "https://" + message.username + ":" + message.password + "@" + message.host;

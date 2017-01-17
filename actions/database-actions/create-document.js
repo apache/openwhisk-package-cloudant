@@ -6,7 +6,7 @@
 function main(message) {
   var cloudantOrError = getCloudantAccount(message);
   if (typeof cloudantOrError !== 'object') {
-    return whisk.error('getCloudantAccount returned an unexpected object type.');
+    return Promise.reject(cloudantOrError);
   }
   var cloudant = cloudantOrError;
   var dbName = message.dbname;
@@ -14,10 +14,10 @@ function main(message) {
   var params = {};
 
   if(!dbName) {
-    return whisk.error('dbname is required.');
+    return Promise.reject('dbname is required.');
   }
   if(!doc) {
-    return whisk.error('doc is required.');
+    return Promise.reject('doc is required.');
   }
 
   if (typeof message.doc === 'object') {
@@ -26,10 +26,10 @@ function main(message) {
     try {
       doc = JSON.parse(message.doc);
     } catch (e) {
-      return whisk.error('doc field cannot be parsed. Ensure it is valid JSON.');
+      return Promise.reject('doc field cannot be parsed. Ensure it is valid JSON.');
     }
   } else {
-    return whisk.error('doc field is ' + (typeof doc) + ' and should be an object or a JSON string.');
+    return Promise.reject('doc field is ' + (typeof doc) + ' and should be an object or a JSON string.');
   }
   var cloudantDb = cloudant.use(dbName);
 
@@ -39,7 +39,7 @@ function main(message) {
     try {
       params = JSON.parse(message.params);
     } catch (e) {
-      return whisk.error('params field cannot be parsed. Ensure it is valid JSON.');
+      return Promise.reject('params field cannot be parsed. Ensure it is valid JSON.');
     }
   }
 
@@ -73,16 +73,13 @@ function getCloudantAccount(message) {
     cloudantUrl = message.url;
   } else {
     if (!message.host) {
-      whisk.error('cloudant account host is required.');
-      return;
+      return 'cloudant account host is required.';
     }
     if (!message.username) {
-      whisk.error('cloudant account username is required.');
-      return;
+      return 'cloudant account username is required.';
     }
     if (!message.password) {
-      whisk.error('cloudant account password is required.');
-      return;
+      return 'cloudant account password is required.';
     }
 
     cloudantUrl = "https://" + message.username + ":" + message.password + "@" + message.host;
