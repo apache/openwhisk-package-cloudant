@@ -25,36 +25,23 @@ function main(msg) {
     if (lifecycleEvent === 'CREATE') {
 
     	// check for parameter errors
-        var paramError;
         if (msg.includeDoc) {
-            paramError = 'cloudant trigger feed: includeDoc parameter is no longer supported';
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+            return Promise.reject('cloudant trigger feed: includeDoc parameter is no longer supported');
         }
         if (!dbname) {
-        	paramError = 'cloudant trigger feed: missing dbname parameter - ' + dbname;
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+        	return Promise.reject('cloudant trigger feed: missing dbname parameter - ' + dbname);
         }
         if (!host) {
-        	paramError = 'cloudant trigger feed: missing host parameter - ' + host;
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+        	return Promise.reject('cloudant trigger feed: missing host parameter - ' + host);
         }
         if (!user) {
-        	paramError = 'cloudant trigger feed: missing username parameter - ' + user;
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+        	return Promise.reject('cloudant trigger feed: missing username parameter - ' + user);
         }
         if (!pass) {
-        	paramError = 'cloudant trigger feed: missing password parameter - ' + pass;
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+        	return Promise.reject('cloudant trigger feed: missing password parameter - ' + pass);
         }
         if (namespace === "_") {
-            paramError = 'You must supply a non-default namespace.';
-            console.log(paramError, '[error:]', whisk.error(paramError));
-            return;
+            return Promise.reject('You must supply a non-default namespace.');
         }
 
         // auth key for trigger
@@ -81,7 +68,7 @@ function main(msg) {
 
         return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger, jsonOptions);
     } else {
-    	return whisk.error('operation is neither CREATE or DELETE');
+    	return Promise.reject('operation is neither CREATE or DELETE');
     }
 }
 
