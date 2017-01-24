@@ -166,15 +166,22 @@ public class CloudantUtil {
      *
      * @throws UnsupportedEncodingException
      */
-    public static Response readTestDatabase(Credential credential) {
-        return readTestDatabase(credential, null);
+    public static JsonObject readTestDatabase(Credential credential) {
+        try {
+            String db = credential.dbname;
+            Response response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).when().get("/" + db);
+            System.out.format("Response of HTTP GET for database %s: %s\n", credential.dbname, response.asString());
+            return gson.fromJson(response.asString(), JsonObject.class);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public static Response readTestDatabase(Credential credential, String dbName) {
         try {
-            Response response = null;
             String db = (dbName != null && !dbName.isEmpty()) ? dbName : credential.dbname;
-            response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).when().get("/" + db);
+            Response response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).when().get("/" + db);
             System.out.format("Response of HTTP GET for database %s: %s\n", credential.dbname, response.asString());
             return response;
         } catch (Exception e) {

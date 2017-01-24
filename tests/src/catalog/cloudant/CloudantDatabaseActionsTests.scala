@@ -19,7 +19,6 @@ import java.util.Date
 
 import catalog.CloudantUtil
 import catalog.CloudantUtil._
-
 import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
@@ -27,6 +26,7 @@ import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.DefaultJsonProtocol.ByteJsonFormat
 import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, pimpAny, pimpString}
+import whisk.utils.JsHelpers
 
 @RunWith(classOf[JUnitRunner])
 class CloudantDatabaseActionsTests extends FlatSpec
@@ -633,7 +633,8 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/list-query-indexes")) {
                     activation =>
                         activation.response.success shouldBe false
-                        activation.response.result.get.fields.get("error") shouldBe defined
+                        val result = activation.response.result.get
+                        JsHelpers.getFieldPath(result, "error", "statusCode") shouldBe Some(JsNumber(404))
                 }
             }
             finally {
@@ -1166,7 +1167,8 @@ class CloudantDatabaseActionsTests extends FlatSpec
                     Map("docs" -> updatedDocsJsArray))) {
                     activation =>
                         activation.response.success shouldBe false
-                        activation.response.result.get.fields.get("error") shouldBe defined
+                        val result = activation.response.result.get
+                        JsHelpers.getFieldPath(result, "error", "statusCode") shouldBe Some(JsNumber(400))
                 }
             }
             finally {
@@ -1704,7 +1706,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                     activation =>
                         activation.response.success shouldBe false
                         val result = activation.response.result.get
-                        result.fields.get("error") shouldBe defined
+                        JsHelpers.getFieldPath(result, "error", "statusCode") shouldBe Some(JsNumber(400))
                 }
             }
             finally {
