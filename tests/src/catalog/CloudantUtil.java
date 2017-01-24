@@ -41,15 +41,16 @@ public class CloudantUtil {
     public static final String PWD_PROPERTY = "password";
     public static final String DBNAME_PROPERTY = "dbname";
     public static final String DOC_ID = "testId";
-    public static final File ATTACHMENT_FILE_PATH = getFileRelativeToCloudantHome("tests/dat/attach.txt");
-    public static final File INDEX_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/indexdesigndoc.txt");
-    public static final File VIEW_AND_SEARCH_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/searchdesigndoc.txt");
 
     /**
      * The root of the Cloudant installation.
      */
-    private static final String cloudantHome = getCloudantHome();
     private static final String CLOUDANT_INSTALL_FILE = "installCatalog.sh";
+    private static final String CLOUDANT_HOME = getCloudantHome();
+    public static final File ATTACHMENT_FILE_PATH = getFileRelativeToCloudantHome("tests/dat/attach.txt");
+    public static final File INDEX_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/indexdesigndoc.txt");
+    public static final File VIEW_AND_SEARCH_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/searchdesigndoc.txt");
+
 
     private static Gson gson = new Gson();
 
@@ -352,7 +353,7 @@ public class CloudantUtil {
     }
 
     public static File getFileRelativeToCloudantHome(String name) {
-        return new File(cloudantHome, name);
+        return new File(CLOUDANT_HOME, name);
     }
 
     private static String getCloudantHome() {

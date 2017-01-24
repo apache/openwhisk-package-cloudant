@@ -228,7 +228,7 @@ class CloudantAccountActionsTests extends FlatSpec
                     activation =>
                         activation.response.success shouldBe false
                         val result = activation.response.result.get
-                        JsHelpers.getFieldPath(result, "error", "hostname") shouldBe Some(JsString("invalidhost"))
+                        result.fields.get("error") shouldBe defined
                 }
             }
             finally {
