@@ -124,6 +124,49 @@ class CloudantDatabaseActionsTests extends FlatSpec
             }
     }
 
+    it should """read cloudant document with read action""" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp
+            val packageName = "dummyCloudantPackage"
+
+            try {
+                CloudantUtil.setUp(credential)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) =>
+                        pkg.bind("/whisk.system/cloudant", name,
+                            Map("username" -> credential.user.toJson,
+                                "password" -> credential.password.toJson,
+                                "host" -> credential.host().toJson,
+                                "dbname" -> credential.dbname.toJson))
+                }
+                //Create test doc
+                val doc = CloudantUtil.createDocParameterForWhisk.get("doc").getAsString
+                val response = CloudantUtil.createDocument(credential, doc)
+                response.get("ok").getAsString shouldBe "true"
+
+                println("Invoking the read action.")
+                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/read",
+                    Map(
+                        "docid" -> response.get("id").getAsString.toJson,
+                        "params" -> JsObject("revs_info" -> JsBoolean(true))))) {
+                    activation =>
+                        activation.response.success shouldBe true
+                        activation.response.result.get.fields.get("date") shouldBe defined
+                        activation.response.result.get.fields.get("_rev") shouldBe defined
+                        activation.response.result.get.fields.get("_revs_info") shouldBe defined
+                }
+            }
+            finally {
+                CloudantUtil.unsetUp(credential)
+            }
+    }
+
     it should """read cloudant document with undefined docid""" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp
@@ -154,6 +197,91 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         val result = activation.response.result.get
                         result.fields.get("error") shouldBe Some(JsString("docid is required."))
                 }
+            }
+            finally {
+                CloudantUtil.unsetUp(credential)
+            }
+    }
+
+    it should """write cloudant document""" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp
+            val packageName = "dummyCloudantPackage"
+
+            try {
+                CloudantUtil.setUp(credential)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) =>
+                        pkg.bind("/whisk.system/cloudant", name,
+                            Map("username" -> credential.user.toJson,
+                                "password" -> credential.password.toJson,
+                                "host" -> credential.host().toJson,
+                                "dbname" -> credential.dbname.toJson))
+                }
+
+                val doc = CloudantUtil.createDocParameterForWhisk().get("doc").getAsString
+                val docJSObj = doc.parseJson.asJsObject
+
+                println("Invoking the write action.")
+                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/write",
+                    Map("doc" -> docJSObj))) {
+                    activation =>
+                        activation.response.success shouldBe true
+                        activation.response.result.get.fields.get("id") shouldBe defined
+                }
+                val getResponse = CloudantUtil.getDocument(credential, "testId")
+                Some(JsString(getResponse.get("date").getAsString)) shouldBe docJSObj.fields.get("date")
+            }
+            finally {
+                CloudantUtil.unsetUp(credential)
+            }
+    }
+
+    it should """write cloudant document with overwrite""" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp
+            val packageName = "dummyCloudantPackage"
+
+            try {
+                CloudantUtil.setUp(credential)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) =>
+                        pkg.bind("/whisk.system/cloudant", name,
+                            Map("username" -> credential.user.toJson,
+                                "password" -> credential.password.toJson,
+                                "host" -> credential.host().toJson,
+                                "dbname" -> credential.dbname.toJson))
+                }
+
+                //Create test doc
+                val doc = CloudantUtil.createDocParameterForWhisk.get("doc").getAsString
+                val response = CloudantUtil.createDocument(credential, doc)
+                response.get("ok").getAsString shouldBe "true"
+
+                val docJSObj = doc.parseJson.asJsObject
+
+                println("Invoking the write action.")
+                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/write",
+                    Map("doc" -> docJSObj,
+                        "overwrite" -> "true".toJson))) {
+                    activation =>
+                        activation.response.success shouldBe true
+                        activation.response.result.get.fields.get("id") shouldBe defined
+                }
+                val getResponse = CloudantUtil.getDocument(credential, "testId")
+                Some(JsString(getResponse.get("date").getAsString)) shouldBe docJSObj.fields.get("date")
             }
             finally {
                 CloudantUtil.unsetUp(credential)
