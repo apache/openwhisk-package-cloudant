@@ -93,11 +93,23 @@ $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/create-do
     -a description 'Create document in database' \
     -a parameters '[ {"name":"dbname", "required":true}, {"name":"doc", "required":true, "description": "The JSON document to insert"}, {"name":"params", "required":false} ]' \
 
+$WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/read \
+    "$PACKAGE_HOME/actions/database-actions/read-document.js" \
+    -a description 'Read document from database' \
+    -a parameters '[ {"name":"dbname", "required":true}, {"name":"id", "required":true, "description": "The Cloudant document id to fetch"}, {"name":"params", "required":false}]' \
+    -p id ''
+
 $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/read-document \
     "$PACKAGE_HOME/actions/database-actions/read-document.js" \
     -a description 'Read document from database' \
     -a parameters '[ {"name":"dbname", "required":true}, {"name":"docid", "required":true, "description": "The Cloudant document id to fetch"}, {"name":"params", "required":false}]' \
     -p docid ''
+
+$WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/write \
+    "$PACKAGE_HOME/actions/database-actions/write-document.js" \
+    -a description 'Write document in database' \
+    -a parameters '[ {"name":"dbname", "required":true}, {"name":"doc", "required":true} ]' \
+    -p doc '{}'
 
 $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/update-document \
     "$PACKAGE_HOME/actions/database-actions/update-document.js" \
