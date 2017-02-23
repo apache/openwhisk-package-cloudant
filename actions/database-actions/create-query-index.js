@@ -11,11 +11,12 @@ function main(message) {
   var cloudant = cloudantOrError;
   var dbName = message.dbname;
   var index = message.index;
+  var params = {};
 
-  if(!dbName) {
+  if (!dbName) {
     return Promise.reject('dbname is required.');
   }
-  if(!index) {
+  if (!index) {
     return Promise.reject('index is required.');
   }
   var cloudantDb = cloudant.use(dbName);

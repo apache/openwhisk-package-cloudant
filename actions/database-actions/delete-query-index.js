@@ -16,16 +16,16 @@ function main(message) {
   var indexName = message.indexname;
   var indexType = message.indextype;
 
-  if(!dbName) {
+  if (!dbName) {
     return Promise.reject('dbname is required.');
   }
-  if(!docId) {
+  if (!docId) {
     return Promise.reject('docid is required.');
   }
-  if(!indexName) {
+  if (!indexName) {
     return Promise.reject('indexname is required.');
   }
-  if(!indexType) {
+  if (!indexType) {
     return Promise.reject('indextype is required.');
   }
 
@@ -35,9 +35,8 @@ function main(message) {
 function deleteIndexFromDesignDoc(cloudant, docId, indexName, indexType, dbName) {
 
   return new Promise(function(resolve, reject) {
-    var path = "_index/" + encodeURIComponent(docId)
-      + '/' + encodeURIComponent(indexType)
-      + '/' + encodeURIComponent(indexName);
+    var path = "_index/" + encodeURIComponent(docId) + '/' + encodeURIComponent(indexType) +
+        '/' + encodeURIComponent(indexName);
 
     cloudant.request({ db: encodeURIComponent(dbName),
         method : 'delete',

@@ -13,10 +13,10 @@ function main(message) {
   var doc = message.doc;
   var params = {};
 
-  if(!dbName) {
+  if (!dbName) {
     return Promise.reject('dbname is required.');
   }
-  if(!doc) {
+  if (!doc) {
     return Promise.reject('doc is required.');
   }
 
@@ -56,7 +56,7 @@ function insert(cloudantDb, doc, params) {
         console.log("success", response);
         resolve(response);
       } else {
-        console.log("error", error)
+        console.log("error", error);
         reject(error);
       }
     });
