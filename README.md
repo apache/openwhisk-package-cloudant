@@ -1,16 +1,16 @@
-## Using the Cloudant package
+# Using the Cloudant package
 The `/whisk.system/cloudant` package enables you to work with a Cloudant database. It includes the following actions and feeds.
 
 | Entity | Type | Parameters | Description |
 | --- | --- | --- | --- |
-| `/whisk.system/cloudant` | package | BluemixServiceName, host, username, password, dbname, overwrite | Work with a Cloudant database |
+| `/whisk.system/cloudant` | package | dbname, host, username, password | Work with a Cloudant database |
 | `/whisk.system/cloudant/read` | action | dbname, id | Read a document from a database |
 | `/whisk.system/cloudant/write` | action | dbname, overwrite, doc | Write a document to a database |
 | `/whisk.system/cloudant/changes` | feed | dbname, maxTriggers | Fire trigger events on changes to a database |
 
 The following topics walk through setting up a Cloudant database, configuring an associated package, and using the actions and feeds in the `/whisk.system/cloudant` package.
 
-### Setting up a Cloudant database in Bluemix
+## Setting up a Cloudant database in Bluemix
 
 If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package bindings for your Bluemix Cloudant service instances. If you're not using OpenWhisk and Cloudant from Bluemix, skip to the next step.
 
@@ -21,7 +21,7 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
 2. Make sure your OpenWhisk CLI is in the namespace corresponding to the Bluemix organization and space that you used in the previous step.
 
   ```
-  $ wsk property set --namespace myBluemixOrg_myBluemixSpace
+  wsk property set --namespace myBluemixOrg_myBluemixSpace
   ```
 
   Alternatively, you can use `wsk property set --namespace` to set a namespace from a list of those accessible to you.
@@ -29,7 +29,7 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
 3. Refresh the packages in your namespace. The refresh automatically creates a package binding for the Cloudant service instance that you created.
 
   ```
-  $ wsk package refresh
+  wsk package refresh
   ```
   ```
   created bindings:
@@ -37,7 +37,7 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
   ```
 
   ```
-  $ wsk package list
+  wsk package list
   ```
   ```
   packages
@@ -49,12 +49,13 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
 4. Check to see that the package binding that was created previously is configured with your Cloudant Bluemix service instance host and credentials.
 
   ```
-  $ wsk package get /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1
+  wsk package get /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1 parameters
   ```
   ```
-  ok: got package /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1, projecting parameters
+  ok: got package /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1, displaying field parameters
+  ```
+  ```json
   [
-      ...
       {
           "key": "username",
           "value": "cdb18832-2bbb-4df2-b7b1-Bluemix"
@@ -67,24 +68,23 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
           "key": "password",
           "value": "c9088667484a9ac827daf8884972737"
       }
-      ...
   ]
   ```
 
-### Setting up a Cloudant database outside Bluemix
+## Setting up a Cloudant database outside Bluemix
 
 If you're not using OpenWhisk in Bluemix or if you want to set up your Cloudant database outside of Bluemix, you must manually create a package binding for your Cloudant account. You need the Cloudant account host name, user name, and password.
 
 1. Create a package binding that is configured for your Cloudant account.
 
   ```
-  $ wsk package bind /whisk.system/cloudant myCloudant -p username MYUSERNAME -p password MYPASSWORD -p host MYCLOUDANTACCOUNT.cloudant.com
+  wsk package bind /whisk.system/cloudant myCloudant -p username MYUSERNAME -p password MYPASSWORD -p host MYCLOUDANTACCOUNT.cloudant.com
   ```
 
 2. Verify that the package binding exists.
 
   ```
-  $ wsk package list
+  wsk package list
   ```
   ```
   packages
@@ -92,17 +92,18 @@ If you're not using OpenWhisk in Bluemix or if you want to set up your Cloudant 
   ```
 
 
-### Listening for changes to a Cloudant database
+## Listening for changes to a Cloudant database
 
 You can use the `changes` feed to configure a service to fire a trigger on every change to your Cloudant database. The parameters are as follows:
 
 - `dbname`: Name of Cloudant database.
 - `maxTriggers`: Stop firing triggers when this limit is reached. Defaults to infinite.
 
+
 1. Create a trigger with the `changes` feed in the package binding that you created previously. Be sure to replace `/myNamespace/myCloudant` with your package name.
 
   ```
-  $ wsk trigger create myCloudantTrigger --feed /myNamespace/myCloudant/changes --param dbname testdb
+  wsk trigger create myCloudantTrigger --feed /myNamespace/myCloudant/changes --param dbname testdb
   ```
   ```
   ok: created trigger feed myCloudantTrigger
@@ -111,7 +112,7 @@ You can use the `changes` feed to configure a service to fire a trigger on every
 2. Poll for activations.
 
   ```
-  $ wsk activation poll
+  wsk activation poll
   ```
 
 3. In your Cloudant dashboard, either modify an existing document or create a new one.
@@ -130,7 +131,7 @@ The content of the generated events has the following parameters:
 
 The JSON representation of the trigger event is as follows:
 
-  ```
+  ```json
   {
       "id": "6ca436c44074c4c2aa6a40c9a188b348",
       "seq": "2-g1AAAAL9aJyV-GJCaEuqx4-BktQkYp_dmIfC",
@@ -142,17 +143,19 @@ The JSON representation of the trigger event is as follows:
   }
   ```
 
-### Writing to a Cloudant database
+## Writing to a Cloudant database
 
 You can use an action to store a document in a Cloudant database called `testdb`. Make sure that this database exists in your Cloudant account.
 
 1. Store a document by using the `write` action in the package binding you created previously. Be sure to replace `/myNamespace/myCloudant` with your package name.
 
   ```
-  $ wsk action invoke /myNamespace/myCloudant/write --blocking --result --param dbname testdb --param doc "{\"_id\":\"heisenberg\",\"name\":\"Walter White\"}"
+  wsk action invoke /myNamespace/myCloudant/write --blocking --result --param dbname testdb --param doc "{\"_id\":\"heisenberg\",\"name\":\"Walter White\"}"
   ```
   ```
   ok: invoked /myNamespace/myCloudant/write with id 62bf696b38464fd1bcaff216a68b8287
+  ```
+  ```json
   {
     "id": "heisenberg",
     "ok": true,
@@ -165,29 +168,29 @@ You can use an action to store a document in a Cloudant database called `testdb`
   The dashboard URL for the `testdb` database looks something like the following: `https://MYCLOUDANTACCOUNT.cloudant.com/dashboard.html#database/testdb/_all_docs?limit=100`.
 
 
-### Reading from a Cloudant database
+## Reading from a Cloudant database
 
 You can use an action to fetch a document from a Cloudant database called `testdb`. Make sure that this database exists in your Cloudant account.
 
-1. Fetch a document by using the `read` action in the package binding that you created previously. Be sure to replace `/myNamespace/myCloudant` with your package name.
+- Fetch a document by using the `read` action in the package binding that you created previously. Be sure to replace `/myNamespace/myCloudant` with your package name.
 
   ```
-  $ wsk action invoke /myNamespace/myCloudant/read --blocking --result --param dbname testdb --param id heisenberg
+  wsk action invoke /myNamespace/myCloudant/read --blocking --result --param dbname testdb --param id heisenberg
   ```
-  ```
+  ```json
   {
     "_id": "heisenberg",
-    "_rev": "1-9a94fb93abc88d8863781a248f63c8c3"
+    "_rev": "1-9a94fb93abc88d8863781a248f63c8c3",
     "name": "Walter White"
   }
   ```
 
-### Using an action sequence and a change trigger to process a document from a Cloudant database
+## Using an action sequence and a change trigger to process a document from a Cloudant database
 
 You can use an action sequence in a rule to fetch and process the document associated with a Cloudant change event.
 
 Here is a sample code of an action that handles a document:
-```
+```javascript
 function main(doc){
   return { "isWalter:" : doc.name === "Walter White"};
 }
@@ -195,25 +198,27 @@ function main(doc){
 
 Create the action to process the document from Cloudant:
 ```
-$ wsk action create myAction myAction.js
+wsk action create myAction myAction.js
 ```
 
 To read a document from the database, you can use the `read` action from the Cloudant package.
 The `read` action may be composed with `myAction` to create an action sequence.
 ```
-$ wsk action create sequenceAction --sequence /myNamespace/myCloudant/read,myAction
+wsk action create sequenceAction --sequence /myNamespace/myCloudant/read,myAction
 ```
 
 The action `sequenceAction` may be used in a rule that activates the action on new Cloudant trigger events.
 ```
-$ wsk rule create myRule myCloudantTrigger sequenceAction
+wsk rule create myRule myCloudantTrigger sequenceAction
 ```
 
 **Note** The Cloudant `changes` trigger used to support the parameter `includeDoc` which is not longer supported.
   You will need to recreate triggers previously created with `includeDoc`. Follow these steps to recreate the trigger:
   ```
-  $ wsk trigger delete myCloudantTrigger
-  $ wsk trigger create myCloudantTrigger --feed /myNamespace/myCloudant/changes --param dbname testdb
+  wsk trigger delete myCloudantTrigger
+  ```
+  ```
+  wsk trigger create myCloudantTrigger --feed /myNamespace/myCloudant/changes --param dbname testdb
   ```
 
   The example illustrated above may be used to create an action sequence to read the changed document and call your existing actions.
