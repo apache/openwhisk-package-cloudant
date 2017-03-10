@@ -214,23 +214,46 @@ module.exports = function(
         logger.info(tid, that.module, method, 'Initializing all cloudant triggers from database.');
 
         triggerDB.list({include_docs: true}, function(err, body) {
-            if(!err) {
+            if (!err) {
                 body.rows.forEach(function(trigger) {
-                    var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
 
-                    if (cloudantTrigger.triggersLeft === -1) {
-                  	    logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
-                        that.unlimitedTriggerFires = true;
-                    } else {
-                        that.unlimitedTriggerFires = false;
-                    }
+                    //check if trigger still exists in whisk db
+                    var triggerObj = that.parseQName(trigger.doc.id, ':');
+                    var host = 'https://' + routerHost +':'+ 443;
+                    var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
+                    var auth = trigger.doc.apikey.split(':');
 
-                    // check here for triggers left if none left end here, and don't create
-                    if (that.unlimitedTriggerFires || cloudantTrigger.triggersLeft > 0) {
-                      that.createTrigger(cloudantTrigger, that.retryCount);
-                    } else {
-                      logger.info(tid, method, 'found a trigger with no triggers left to fire off.');
-                    }
+                    logger.info(tid, method, "Checking if trigger", trigger.doc.id, "still exists");
+                    request({
+                        method: 'get',
+                        url: triggerURL,
+                        auth: {
+                            user: auth[0],
+                            pass: auth[1]
+                        }
+                    }, function(error, response, body) {
+                        //delete from database if trigger no longer exists (404)
+                        if (!error && response.statusCode === 404) {
+                            that.deleteTriggerFromDB(trigger.doc.id);
+                        }
+                        else {
+                            var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
+
+                            if (cloudantTrigger.triggersLeft === -1) {
+                                logger.info(tid, method, 'found a trigger fire limit set to -1.  setting it to fire infinitely many times');
+                                that.unlimitedTriggerFires = true;
+                            } else {
+                                that.unlimitedTriggerFires = false;
+                            }
+
+                            // check here for triggers left if none left end here, and don't create
+                            if (that.unlimitedTriggerFires || cloudantTrigger.triggersLeft > 0) {
+                                that.createTrigger(cloudantTrigger, that.retryCount);
+                            } else {
+                                logger.info(tid, method, 'found a trigger with no triggers left to fire off.');
+                            }
+                        }
+                    });
                 });
             } else {
                 logger.error(tid, method, 'could not get latest state from database');
@@ -274,9 +297,9 @@ module.exports = function(
         var method = 'deleteTriggerFromDB';
 
         triggerDB.get(id, function(err, body) {
-            if(!err) {
+            if (!err) {
                 triggerDB.destroy(body._id, body._rev, function(err, body) {
-                    if(err) {
+                    if (err) {
                         logger.error(tid, method, 'there was an error while deleting', id, 'from database');
                         if (res) {
                             res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + 'cannot be deleted.' } );
@@ -353,10 +376,10 @@ module.exports = function(
             },
             json: form
         }, function(error, response, body) {
-            if(dataTrigger) {
+            if (dataTrigger) {
                 logger.info(tid, method, 'done http request, STATUS', response ? response.statusCode : response);
                 logger.info(tid, method, 'done http request, body', body);
-                if(error || response.statusCode >= 400) {
+                if (error || response.statusCode >= 400) {
                     dataTrigger.retriesLeft--;
 
                     // only manage trigger fires if they are not infinite
@@ -370,11 +393,11 @@ module.exports = function(
                     logger.info(tid, method, 'fired', id, 'with body', body, dataTrigger.triggersLeft, 'triggers left');
                 }
 
-                if(dataTrigger.triggersLeft === 0 || dataTrigger.retriesLeft === 0) {
-                    if(dataTrigger.triggersLeft === 0) {
+                if (dataTrigger.triggersLeft === 0 || dataTrigger.retriesLeft === 0) {
+                    if (dataTrigger.triggersLeft === 0) {
                         logger.info(tid, 'onTick', 'no more triggers left, deleting');
                     }
-                    if(dataTrigger.retriesLeft === 0) {
+                    if (dataTrigger.retriesLeft === 0) {
                         logger.info(tid, 'onTick', 'too many retries, deleting');
                     }
 
