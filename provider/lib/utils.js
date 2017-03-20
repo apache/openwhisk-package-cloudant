@@ -213,7 +213,7 @@ module.exports = function(
         var method = 'initAllTriggers';
         logger.info(tid, that.module, method, 'Initializing all cloudant triggers from database.');
 
-        triggerDB.list({include_docs: true}, function(err, body) {
+        triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function(trigger) {
 
