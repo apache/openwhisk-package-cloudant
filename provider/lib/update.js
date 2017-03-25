@@ -1,6 +1,6 @@
 var request = require('request');
 
-module.exports = function(tid, logger, utils) {
+module.exports = function(logger, utils) {
 
     // Test Endpoint
     this.endPoint = '/cloudanttriggers/:id';
@@ -10,16 +10,16 @@ module.exports = function(tid, logger, utils) {
 
         var method = 'PUT /cloudanttriggers';
 
-        logger.info(tid, method);
+        logger.info(method);
         var args = typeof req.body === 'object' ? req.body : JSON.parse(req.body);
         if (args.maxTriggers > utils.triggersLimit) {
-            logger.warn(tid, method, 'maxTriggers > ' + utils.triggersLimit + ' is not allowed');
+            logger.warn(method, 'maxTriggers > ' + utils.triggersLimit + ' is not allowed');
             res.status(400).json({
                 error: 'maxTriggers > ' + utils.triggersLimit + ' is not allowed'
             });
             return;
         } else if (!args.callback || !args.callback.action || !args.callback.action.name) {
-            logger.warn(tid, method, 'Your callback is unknown for cloudant trigger:', args.callback);
+            logger.warn(method, 'Your callback is unknown for cloudant trigger:', args.callback);
             res.status(400).json({
                 error: 'Your callback is unknown for cloudant trigger.'
             });
@@ -32,7 +32,7 @@ module.exports = function(tid, logger, utils) {
         var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
         var auth = args.apikey.split(':');
 
-        logger.info(tid, method, 'Checking if user has access rights to create a trigger');
+        logger.info(method, 'Checking if user has access rights to create a trigger');
         request({
             method: 'get',
             url: triggerURL,
@@ -43,7 +43,7 @@ module.exports = function(tid, logger, utils) {
         }, function(error, response, body) {
             if (error || response.statusCode >= 400) {
                 var errorMsg = 'Trigger authentication request failed.';
-                logger.error(tid, method, errorMsg, error);
+                logger.error(method, errorMsg, error);
                 if (error) {
                     res.status(400).json({
                         message: errorMsg,
@@ -61,13 +61,13 @@ module.exports = function(tid, logger, utils) {
             else {
                 var id = req.params.id;
                 var trigger = utils.initTrigger(args, id);
-                // 10 is number of retries to create a trigger.
-                utils.createTrigger(trigger, 10)
+                // number of retries to create a trigger.
+                utils.createTrigger(trigger, utils.retriesBeforeDelete)
                 .then(function (newTrigger) {
-                    logger.info(tid, method, 'Trigger was added and database is confirmed.', newTrigger);
+                    logger.info(method, 'Trigger was added and database is confirmed.', newTrigger);
                     utils.addTriggerToDB(newTrigger, res);
                 }, function (err) {
-                    logger.error(tid, method, 'Trigger could not be created.', err);
+                    logger.error(method, 'Trigger could not be created.', err);
                     utils.deleteTrigger(id);
                     res.status(400).json({
                         message: 'Trigger could not be created.',

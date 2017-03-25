@@ -22,14 +22,9 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.set('port', process.env.PORT || 8080);
 
-// TODO: Setup a proper Transaction ID
-var tid = "??";
 
 // Whisk API Router Host
 var routerHost = process.env.ROUTER_HOST || 'localhost';
-
-// Support includeDocs=true for triggers who existed before the removal of includeDocs
-var supportIncludeDocs = process.env.SUPPORT_INCLUDE_DOCS || 'false';
 
 // Maximum number of times to retry the invocation of an action
 // before deleting the associated trigger
@@ -44,7 +39,6 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 var dbUsername = process.env.DB_USERNAME;
 var dbPassword = process.env.DB_PASSWORD;
 var dbHost = process.env.DB_HOST;
-var dbPort = process.env.DB_PORT;
 var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
@@ -53,18 +47,18 @@ var ddname = '_design/filters';
 // Create the Provider Server
 var server = http.createServer(app);
 server.listen(app.get('port'), function(){
-    logger.info(tid, 'server.listen', 'Express server listening on port ' + app.get('port'));
+    logger.info('server.listen', 'Express server listening on port ' + app.get('port'));
 });
 
 function createDatabase (nanop) {
-    logger.info(tid, 'createDatabase', 'creating the trigger database');
+    logger.info('createDatabase', 'creating the trigger database');
     return new Promise(function(resolve, reject) {
         nanop.db.create(databaseName, function (err, body) {
             if (!err) {
-                logger.info(tid, databaseName, ' database for triggers was created.');
+                logger.info('createDatabase', 'created trigger database:', databaseName);
             }
             else {
-                logger.info(tid, databaseName, 'failed to create the trigger database.  it might already exist ',err);
+                logger.info('createDatabase', 'failed to create trigger database:', databaseName, err);
             }
             var db = nanop.db.use(databaseName);
             var only_triggers = {
@@ -98,7 +92,7 @@ function createDatabase (nanop) {
 }
 
 function createTriggerDb () {
-    logger.info('url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
+    logger.info('createTriggerDb', 'database url is ' +  dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     var nanop = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
     if (nanop !== null) {
         return createDatabase (nanop);
@@ -114,20 +108,20 @@ function init(server) {
     if (server !== null) {
         var address = server.address();
         if (address === null) {
-            logger.error(tid, 'init', 'Error initializing server. Perhaps port is already in use.');
+            logger.error('init', 'Error initializing server. Perhaps port is already in use.');
             process.exit(-1);
         }
     }
 
     createTriggerDb()
     .then(nanoDb => {
-        logger.info(tid, 'init', 'trigger storage database details: ', nanoDb);
+        logger.info('init', 'trigger storage database details:', nanoDb);
 
-        var providerUtils = new ProviderUtils(tid, logger, app, retriesBeforeDelete, nanoDb, routerHost, supportIncludeDocs);
-        var providerRAS = new ProviderRAS(tid, logger, providerUtils);
-        var providerHealth = new ProviderHealth(tid, logger, providerUtils);
-        var providerUpdate = new ProviderUpdate(tid, logger, providerUtils);
-        var providerDelete = new ProviderDelete(tid, logger, providerUtils);
+        var providerUtils = new ProviderUtils(logger, app, retriesBeforeDelete, nanoDb, routerHost);
+        var providerRAS = new ProviderRAS(logger);
+        var providerHealth = new ProviderHealth(logger, providerUtils);
+        var providerUpdate = new ProviderUpdate(logger, providerUtils);
+        var providerDelete = new ProviderDelete(logger, providerUtils);
 
         // RAS Endpoint
         app.get(providerRAS.endPoint, providerRAS.ras);
@@ -144,7 +138,7 @@ function init(server) {
         providerUtils.initAllTriggers();
 
     }).catch(err => {
-        logger.error(tid, 'init', 'an error occurred creating database:', err);
+        logger.error('init', 'an error occurred creating database:', err);
     });
 
 }
