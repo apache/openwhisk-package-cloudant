@@ -163,7 +163,7 @@ class CloudantHealthFeedTests
                 }
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                             "username" -> myCloudantCreds.user.toJson,
@@ -213,7 +213,7 @@ class CloudantHealthFeedTests
                 }
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = true) {
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
