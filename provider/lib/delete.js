@@ -1,6 +1,6 @@
 var request = require('request');
 
-module.exports = function(tid, logger, utils) {
+module.exports = function(logger, utils) {
 
     // Test Endpoint
     this.endPoint = '/cloudanttriggers/:id';
@@ -9,7 +9,7 @@ module.exports = function(tid, logger, utils) {
     this.delete = function (req, res) {
 
         var method = 'DELETE /cloudanttriggers';
-        logger.info(tid, method);
+        logger.info(method);
 
         var id = req.params.id;
         var args = typeof req.body === 'object' ? req.body : JSON.parse(req.body);
@@ -34,7 +34,7 @@ module.exports = function(tid, logger, utils) {
             }
              else {
                 var errorMsg = 'Cloudant data trigger ' + id  + ' cannot be deleted.';
-                logger.error(tid, method, errorMsg, error);
+                logger.error(method, errorMsg, error);
                 if (error) {
                     res.status(400).json({
                         message: errorMsg,
