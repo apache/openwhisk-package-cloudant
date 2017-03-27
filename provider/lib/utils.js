@@ -77,7 +77,7 @@ module.exports = function(
             that.triggers[dataTrigger.id] = dataTrigger;
 
             feed.on('change', function (change) {
-                logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname, change);
+                logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
 
                 var triggerHandle = that.triggers[dataTrigger.id];
                 if (triggerHandle) {
@@ -139,7 +139,7 @@ module.exports = function(
         var method = 'initTrigger';
 
         // validate parameters here
-        logger.info(method, 'create has received the following request args', JSON.stringify(obj));
+        logger.info(method, 'create has received the following request args', obj);
 
         // if the trigger creation request has not set the max trigger fire limit
         // we will set it here (default value can be updated in ./constants.js)
@@ -322,7 +322,7 @@ module.exports = function(
         }
         form.dbname = dataTrigger.dbname;
 
-        logger.info(method, 'firing trigger', triggerName, 'with db update', JSON.stringify(form));
+        logger.info(method, 'firing trigger', triggerName, 'with db update');
 
         var host = 'https://' + routerHost + ':' + 443;
         var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
