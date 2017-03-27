@@ -13,6 +13,7 @@
     "moment": "^2.11.1",
     "lodash": "^3.10.1",
     "request": "2.69.0",
-    "nano": "^6.2.0"
+    "nano": "^6.2.0",
+    "json-stringify-safe": "^5.0.1"
   }
 }
