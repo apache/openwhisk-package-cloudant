@@ -338,7 +338,7 @@ module.exports = function(
             json: form
         }, function(error, response, body) {
             if (dataTrigger) {
-                logger.info(method, 'done http request, STATUS', response ? response.statusCode : response);
+                logger.info(method, id, 'http post request, STATUS:', response ? response.statusCode : response);
                 if (error || response.statusCode >= 400) {
                     logger.error(method, 'there was an error invoking', id, response ? response.statusCode : response, error, body);
                     if (!error && [408, 429, 500, 503].indexOf(response.statusCode) === -1) {
