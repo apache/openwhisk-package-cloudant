@@ -9,17 +9,17 @@ module.exports = function(logger, utils) {
     this.delete = function (req, res) {
 
         var method = 'DELETE /cloudanttriggers';
-        logger.info(method);
 
         var id = req.params.id;
         var args = typeof req.body === 'object' ? req.body : JSON.parse(req.body);
 
         //Check that user has access rights to delete a trigger
-        var triggerObj = utils.parseQName(id, ':');
+        var triggerObj = utils.parseQName(id);
         var host = 'https://' + utils.routerHost +':'+ 443;
         var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
         var auth = args.apikey.split(':');
 
+        logger.info(method, 'Checking if user has access rights to delete trigger', id);
         request({
             method: 'get',
             url: triggerURL,
