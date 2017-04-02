@@ -26,10 +26,6 @@ app.set('port', process.env.PORT || 8080);
 // Whisk API Router Host
 var routerHost = process.env.ROUTER_HOST || 'localhost';
 
-// Maximum number of times to retry the invocation of an action
-// before deleting the associated trigger
-var retriesBeforeDelete = constants.RETRIES_BEFORE_DELETE;
-
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
@@ -53,7 +49,7 @@ server.listen(app.get('port'), function(){
 function createDatabase (nanop) {
     logger.info('createDatabase', 'creating the trigger database');
     return new Promise(function(resolve, reject) {
-        nanop.db.create(databaseName, function (err, body) {
+        nanop.db.create(databaseName, function (err) {
             if (!err) {
                 logger.info('createDatabase', 'created trigger database:', databaseName);
             }
@@ -69,14 +65,14 @@ function createDatabase (nanop) {
                 }.toString()
             };
 
-            db.get(ddname, function (error, body) {
+            db.get(ddname, function (error) {
                 if (error) {
                     //new design doc
                     db.insert({
                         views: {
                             only_triggers: only_triggers
                         },
-                    }, ddname, function (error, body) {
+                    }, ddname, function (error) {
                         if (error) {
                             reject("view could not be created: " + error);
                         }
@@ -117,7 +113,7 @@ function init(server) {
     .then(nanoDb => {
         logger.info('init', 'trigger storage database details:', nanoDb);
 
-        var providerUtils = new ProviderUtils(logger, app, retriesBeforeDelete, nanoDb, routerHost);
+        var providerUtils = new ProviderUtils(logger, app, nanoDb, routerHost);
         var providerRAS = new ProviderRAS(logger);
         var providerHealth = new ProviderHealth(logger, providerUtils);
         var providerUpdate = new ProviderUpdate(logger, providerUtils);

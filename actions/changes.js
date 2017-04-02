@@ -8,9 +8,7 @@ function main(msg) {
 
     var namespace = process.env.__OW_NAMESPACE;
     var triggerName = parseQName(msg.triggerName).name;
-
-    var trigger = '/' + namespace + '/' + triggerName;
-    var replaceNameTrigger = trigger.replace(/\//g, ":");
+    var triggerId = ':' + namespace + ':' + triggerName;
 
     // configuration parameters
     var provider_endpoint = msg.package_endpoint;
@@ -56,17 +54,14 @@ function main(msg) {
         input.pass = pass;
         input.apikey = apiKey;
         input.maxTriggers = maxTriggers;
-        input.callback = {};
-        input.callback.action = {};
-        input.callback.action.name = trigger;
 
-        return cloudantHelper(provider_endpoint, 'put', replaceNameTrigger, input);
+        return cloudantHelper(provider_endpoint, 'put', triggerId, input);
     } else if (lifecycleEvent === 'DELETE') {
 
         var jsonOptions = {};
         jsonOptions.apikey = msg.authKey;
 
-        return cloudantHelper(provider_endpoint, 'delete', replaceNameTrigger, jsonOptions);
+        return cloudantHelper(provider_endpoint, 'delete', triggerId, jsonOptions);
     } else {
     	return Promise.reject('operation is neither CREATE or DELETE');
     }
