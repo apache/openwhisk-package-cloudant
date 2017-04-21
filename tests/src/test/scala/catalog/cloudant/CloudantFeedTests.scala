@@ -236,4 +236,53 @@ class CloudantFeedTests
 
     }
 
+    it should "only invoke as many times as specified" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+        val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                println("Creating cloudant trigger feed.")
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> myCloudantCreds.user.toJson,
+                            "password" -> myCloudantCreds.password.toJson,
+                            "host" -> myCloudantCreds.host().toJson,
+                            "dbname" -> myCloudantCreds.dbname.toJson,
+                            "maxTriggers" -> 1.toJson))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                // Create 2 test docs in cloudant and assert that document was inserted successfully
+                println("Creating a test doc-1 in the cloudant")
+                val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_1\"}")
+                response1.get("ok").getAsString() should be("true")
+                println("Creating a test doc-2 in the cloudant")
+                val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_2\"}")
+                response2.get("ok").getAsString() should be("true")
+
+                println("Checking for activations")
+                val activations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
+                println(s"Found activation size (should be exactly 1): $activations")
+                activations should be(1)
+
+            } finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
+
 }
