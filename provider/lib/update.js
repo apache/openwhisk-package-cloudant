@@ -50,8 +50,12 @@ module.exports = function(logger, utils) {
                 // number of retries to create a trigger.
                 utils.createTrigger(trigger, utils.retryAttempts)
                 .then(newTrigger => {
-                    logger.info(method, 'Trigger was added and database is confirmed.', newTrigger.id);
+                    newTrigger.status = {
+                        'active': true,
+                        'dateChanged': new Date().toISOString(),
+                    };
                     utils.addTriggerToDB(newTrigger, res);
+                    logger.info(method, 'Trigger was added and database is confirmed.', newTrigger.id);
                 }).catch(err => {
                     logger.error(method, 'Trigger', id, 'could not be created.', err);
                     utils.deleteTrigger(id);

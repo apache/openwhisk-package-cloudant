@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog;
+package system;
 
 import com.cloudant.client.api.CloudantClient;
 import com.cloudant.client.api.Database;

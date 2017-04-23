@@ -13,22 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog.cloudant
+package system.packages
 
+import common.TestUtils.ANY_ERROR_EXIT
+import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import catalog.CloudantUtil
-import common.TestHelpers
-import common.Wsk
-import common.WskProps
-import common.WskTestHelpers
-import spray.json.DefaultJsonProtocol.IntJsonFormat
-import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat}
 import spray.json.pimpAny
-import common.WskActorSystem
-import common.TestUtils.ANY_ERROR_EXIT
+import system.CloudantUtil
 
 /**
  * Tests for Cloudant trigger service
@@ -236,7 +230,7 @@ class CloudantFeedTests
 
     }
 
-    it should "only invoke as many times as specified" in withAssetCleaner(wskprops) {
+    it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
         val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
@@ -267,18 +261,24 @@ class CloudantFeedTests
                 }
                 feedCreationResult.stdout should include("ok")
 
-                // Create 2 test docs in cloudant and assert that document was inserted successfully
+                // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_1\"}")
                 response1.get("ok").getAsString() should be("true")
+
+                println("Checking for activations")
+                val activations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 5).length
+                println(s"Found activation size (should be exactly 1): $activations")
+                activations should be(1)
+
                 println("Creating a test doc-2 in the cloudant")
                 val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_2\"}")
                 response2.get("ok").getAsString() should be("true")
 
-                println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
-                println(s"Found activation size (should be exactly 1): $activations")
-                activations should be(1)
+                println("No activations should be created for test_doc_2 since trigger is disabled")
+                val newactivations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 5).length
+                println(s"Activation size should still be one: $newactivations")
+                newactivations should be(1)
 
             } finally {
                 CloudantUtil.unsetUp(myCloudantCreds)

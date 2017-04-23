@@ -13,19 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog.cloudant
+package system.packages
 
 import java.util.Date
 
-import catalog.CloudantUtil
-import catalog.CloudantUtil._
 import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.DefaultJsonProtocol.ByteJsonFormat
+import spray.json.DefaultJsonProtocol.{ByteJsonFormat, StringJsonFormat}
 import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, pimpAny, pimpString}
+import system.CloudantUtil
 import whisk.utils.JsHelpers
 
 @RunWith(classOf[JUnitRunner])
@@ -412,9 +410,10 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         activation.response.success shouldBe true
                         activation.response.result.get.fields.get("id") shouldBe defined
                         activation.response.result.get.fields.get("rev") shouldBe defined
+                        activation.response.result.get.fields.get("rev") shouldBe defined
                 }
                 //Assert that document does not exist
-                val getResponse = getDocument(credential, response.get("id").getAsString)
+                val getResponse = CloudantUtil.getDocument(credential, response.get("id").getAsString)
                 getResponse.get("error").getAsString shouldBe "not_found"
             }
             finally {
@@ -641,7 +640,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                                 "dbname" -> credential.dbname.toJson))
                 }
                 //Create test design index doc
-                val indexDesignDoc = CloudantUtil.createDesignFromFile(INDEX_DDOC_PATH).toString
+                val indexDesignDoc = CloudantUtil.createDesignFromFile(CloudantUtil.INDEX_DDOC_PATH).toString
                 val indexDocJSObj = indexDesignDoc.parseJson.asJsObject
 
                 println("Invoking the create-query-index action.")
@@ -717,7 +716,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                                 "dbname" -> credential.dbname.toJson))
                 }
                 //Create test design index doc
-                val indexDesignDoc = CloudantUtil.createDesignFromFile(INDEX_DDOC_PATH).toString
+                val indexDesignDoc = CloudantUtil.createDesignFromFile(CloudantUtil.INDEX_DDOC_PATH).toString
                 val response = CloudantUtil.createDocument(credential, indexDesignDoc)
                 response.get("ok").getAsString shouldBe "true"
 
@@ -838,7 +837,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 response.get("ok").getAsString shouldBe "true"
 
                 //Create test design doc
-                val designDoc = CloudantUtil.createDesignFromFile(VIEW_AND_SEARCH_DDOC_PATH).toString
+                val designDoc = CloudantUtil.createDesignFromFile(CloudantUtil.VIEW_AND_SEARCH_DDOC_PATH).toString
                 val getResponse = CloudantUtil.createDocument(credential, designDoc)
                 getResponse.get("ok").getAsString shouldBe "true"
 
@@ -889,7 +888,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 response.get("ok").getAsString shouldBe "true"
 
                 //Create test design doc
-                val designDoc = CloudantUtil.createDesignFromFile(VIEW_AND_SEARCH_DDOC_PATH).toString
+                val designDoc = CloudantUtil.createDesignFromFile(CloudantUtil.VIEW_AND_SEARCH_DDOC_PATH).toString
                 val getResponse = CloudantUtil.createDocument(credential, designDoc)
                 getResponse.get("ok").getAsString shouldBe "true"
 
@@ -936,7 +935,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 response.get("ok").getAsString shouldBe "true"
 
                 //Create test design doc
-                val designDoc = CloudantUtil.createDesignFromFile(VIEW_AND_SEARCH_DDOC_PATH).toString
+                val designDoc = CloudantUtil.createDesignFromFile(CloudantUtil.VIEW_AND_SEARCH_DDOC_PATH).toString
                 val getResponse = CloudantUtil.createDocument(credential, designDoc)
                 getResponse.get("ok").getAsString shouldBe "true"
 
@@ -985,7 +984,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 response.get("ok").getAsString shouldBe "true"
 
                 //Create test design doc
-                val designDoc = CloudantUtil.createDesignFromFile(VIEW_AND_SEARCH_DDOC_PATH).toString
+                val designDoc = CloudantUtil.createDesignFromFile(CloudantUtil.VIEW_AND_SEARCH_DDOC_PATH).toString
                 val getResponse = CloudantUtil.createDocument(credential, designDoc)
                 getResponse.get("ok").getAsString shouldBe "true"
 
@@ -1041,7 +1040,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         val result = activation.response.result.get
                         result.fields.get("ok") shouldBe Some(JsBoolean(true))
                 }
-                val getResponse = getDocument(credential, id)
+                val getResponse = CloudantUtil.getDocument(credential, id)
                 getResponse.get("error").getAsString shouldBe "not_found"
                 getResponse.get("reason").getAsString shouldBe "deleted"
             }
@@ -1114,7 +1113,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                                 "dbname" -> credential.dbname.toJson))
                 }
                 //Create test index
-                val view = CloudantUtil.createDesignFromFile(VIEW_AND_SEARCH_DDOC_PATH)
+                val view = CloudantUtil.createDesignFromFile(CloudantUtil.VIEW_AND_SEARCH_DDOC_PATH)
                 val response = CloudantUtil.createDocument(credential, view.toString)
                 response.get("ok").getAsString shouldBe "true"
                 val id = response.get("id").getAsString
@@ -1129,7 +1128,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         result.fields.get("ok") shouldBe Some(JsBoolean(true))
                 }
                 //Assert that view is deleted
-                val getResponse = getDocument(credential, id)
+                val getResponse = CloudantUtil.getDocument(credential, id)
                 getResponse.get("views").toString shouldBe "{}"
             }
             finally {
@@ -1697,7 +1696,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         val result = activation.response.result.get
                         result.fields.get("id") shouldBe Some(JsString(id))
                 }
-                val docResponse = getDocument(credential, id)
+                val docResponse = CloudantUtil.getDocument(credential, id)
                 val updatedAttachment = docResponse.get("_attachments").getAsJsonObject.get(attachmentName).getAsJsonObject
                 getResponse.get("_attachments").getAsJsonObject.has(attachmentName) shouldBe true
                 attachment.get("revpos") should not be updatedAttachment.get("revpos")
@@ -1791,7 +1790,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                         activation.response.result.get.fields.get("rev") shouldBe defined
                 }
                 //Assert that attachment does not exist in doc
-                val response = getDocument(credential, id).toString
+                val response = CloudantUtil.getDocument(credential, id).toString
                 val docJSObject = response.parseJson.asJsObject
                 docJSObject.fields.get("_attachments") should not be defined
             }

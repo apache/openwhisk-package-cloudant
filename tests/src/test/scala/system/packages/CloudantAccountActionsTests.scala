@@ -13,15 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog.cloudant
+package system.packages
 
-import catalog.CloudantUtil
 import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.{JsArray, JsNumber, JsString, JsValue, pimpAny}
+import system.CloudantUtil
 import whisk.utils.JsHelpers
 
 import scala.collection.mutable.HashSet

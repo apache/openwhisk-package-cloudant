@@ -155,64 +155,50 @@ module.exports = function(
         triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
             if (!err) {
                 body.rows.forEach(function(trigger) {
+                    if (!trigger.doc.status || trigger.doc.status.active === true) {
+                        //check if trigger still exists in whisk db
+                        var triggerObj = that.parseQName(trigger.doc.id);
+                        var host = 'https://' + routerHost + ':' + 443;
+                        var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
+                        var auth = trigger.doc.apikey.split(':');
 
-                    //check if trigger still exists in whisk db
-                    var triggerObj = that.parseQName(trigger.doc.id);
-                    var host = 'https://' + routerHost +':'+ 443;
-                    var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-                    var auth = trigger.doc.apikey.split(':');
-
-                    logger.info(method, 'Checking if trigger', trigger.doc.id, 'still exists');
-                    request({
-                        method: 'get',
-                        url: triggerURL,
-                        auth: {
-                            user: auth[0],
-                            pass: auth[1]
-                        }
-                    }, function(error, response) {
-                        //delete from database if trigger no longer exists (404)
-                        if (!error && response.statusCode === 404) {
-                            logger.info(method, 'Trigger', trigger.doc.id, 'no longer exists');
-                            that.deleteTriggerFromDB(trigger.doc.id);
-                        }
-                        else {
-                            var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
-
-                            // check here for triggers left if none left end here, and don't create
-                            if (cloudantTrigger.maxTriggers === -1 || cloudantTrigger.triggersLeft > 0) {
+                        logger.info(method, 'Checking if trigger', trigger.doc.id, 'still exists');
+                        request({
+                            method: 'get',
+                            url: triggerURL,
+                            auth: {
+                                user: auth[0],
+                                pass: auth[1]
+                            }
+                        }, function (error, response) {
+                            //disable trigger in database if trigger is dead
+                            if (!error && that.shouldDisableTrigger(response.statusCode)) {
+                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when re-creating the trigger';
+                                that.disableTriggerInDB(trigger.doc.id, response.statusCode, message);
+                                logger.error(method, 'trigger', trigger.doc.id, 'has been disabled due to status code:', response.statusCode);
+                            }
+                            else {
+                                var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
                                 that.createTrigger(cloudantTrigger, that.retryAttempts)
                                 .then(newTrigger => {
                                     logger.info(method, 'Trigger was added.', newTrigger.id);
                                 }).catch(err => {
-                                    //if feed was not recreated then delete from trigger database
-                                    that.deleteTriggerFromDB(cloudantTrigger.id);
+                                    var message = 'Automatically disabled after receiving an exception when re-creating the trigger';
+                                    that.disableTriggerInDB(cloudantTrigger.id, undefined, message);
+                                    logger.error(method, 'Disabled trigger', cloudantTrigger.id, 'due to exception:', err);
                                 });
-                            } else {
-                                logger.info(method, 'found a trigger with no triggers left to fire off.');
                             }
-                        }
-                    });
+                        });
+                    }
+                    else {
+                        logger.info(method, 'ignoring trigger', trigger.doc._id, 'since it is disabled.');
+                    }
                 });
             } else {
                 logger.error(method, 'could not get latest state from database');
             }
         });
 
-    };
-
-    // Delete a trigger: stop listening for changes and remove it.
-    this.deleteTrigger = function (id) {
-        var method = 'deleteTrigger';
-        var trigger = that.triggers[id];
-        if (trigger) {
-            logger.info(method, 'Stopped cloudant trigger', id, 'listening for changes in database', trigger.dbname);
-            trigger.feed.stop();
-            delete that.triggers[id];
-        } else {
-            logger.info(method, 'trigger', id, 'could not be found in the trigger list.');
-            return false;
-        }
     };
 
     this.addTriggerToDB = function (trigger, res) {
@@ -224,23 +210,63 @@ module.exports = function(
                 res.status(200).json(_.omit(trigger, 'feed'));
             } else {
                 that.deleteTrigger(trigger.id);
-                res.status(err.statusCode).json({error: 'Cloudant trigger cannot be created.'});
+                res.status(err.statusCode).json({error: 'Cloudant trigger cannot be created. ' + err});
             }
         });
 
+    };
+
+    this.shouldDisableTrigger = function (statusCode) {
+        return ((statusCode >= 400 && statusCode < 500) && [408, 429].indexOf(statusCode) === -1);
+    };
+
+    this.disableTriggerInDB = function (id, statusCode, message) {
+
+        var method = 'disableTriggerInDB';
+
+        triggerDB.get(id, function (err, existing) {
+            if (!err) {
+                if (!existing.status || existing.status.active === true) {
+                    var updatedTrigger = existing;
+                    var status = {
+                        'active': false,
+                        'dateChanged': new Date().toISOString(),
+                        'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
+                    };
+                    updatedTrigger.status = status;
+
+                    triggerDB.insert(updatedTrigger, id, function (err) {
+                        if (err) {
+                            logger.error(method, 'there was an error while disabling', id, 'in database. ' + err);
+                        }
+                        else {
+                            that.deleteTrigger(id);
+                            logger.info(method, 'trigger', id, 'successfully disabled in database');
+                        }
+                    });
+                }
+            }
+            else {
+                if (err.statusCode === 404) {
+                    logger.error(method, 'there was no trigger with id', id, 'in database.', err.error);
+                } else {
+                    logger.error(method, 'there was an error while getting', id, 'from database', err);
+                }
+            }
+        });
     };
 
     this.deleteTriggerFromDB = function (id, res) {
 
         var method = 'deleteTriggerFromDB';
 
-        triggerDB.get(id, function(err, body) {
+        triggerDB.get(id, function(err, existing) {
             if (!err) {
-                triggerDB.destroy(body._id, body._rev, function(err) {
+                triggerDB.destroy(existing._id, existing._rev, function(err) {
                     if (err) {
-                        logger.error(method, 'there was an error while deleting', id, 'from database');
+                        logger.error(method, 'there was an error while deleting', id, 'from database. ' + err);
                         if (res) {
-                            res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + 'cannot be deleted.' } );
+                            res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + 'cannot be deleted. ' + err } );
                         }
                     } else {
                         that.deleteTrigger(id);
@@ -260,12 +286,26 @@ module.exports = function(
                 } else {
                     logger.error(method, 'there was an error while getting', id, 'from database', err);
                     if (res) {
-                        res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + ' cannot be deleted.' } );
+                        res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + ' cannot be deleted. ' + err } );
                     }
                 }
             }
         });
 
+    };
+
+    // Delete a trigger: stop listening for changes and remove it.
+    this.deleteTrigger = function (id) {
+        var method = 'deleteTrigger';
+        var trigger = that.triggers[id];
+        if (trigger) {
+            logger.info(method, 'Stopped cloudant trigger', id, 'listening for changes in database', trigger.dbname);
+            trigger.feed.stop();
+            delete that.triggers[id];
+        } else {
+            logger.info(method, 'trigger', id, 'could not be found in the trigger list.');
+            return false;
+        }
     };
 
     this.fireTrigger = function (id, change) {
@@ -287,6 +327,10 @@ module.exports = function(
         that.postTrigger(dataTrigger, form, uri, auth, that.retryAttempts)
          .then(triggerId => {
              logger.info(method, 'Trigger', triggerId, 'was successfully fired');
+             if (dataTrigger.triggersLeft === 0) {
+                 that.disableTriggerInDB(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
+                 logger.error(method, 'no more triggers left, disabled', dataTrigger.id);
+             }
          }).catch(err => {
              logger.error(method, err);
          });
@@ -310,10 +354,11 @@ module.exports = function(
                     logger.info(method, dataTrigger.id, 'http post request, STATUS:', response ? response.statusCode : response);
                     if (error || response.statusCode >= 400) {
                         logger.error(method, 'there was an error invoking', dataTrigger.id, response ? response.statusCode : error);
-                        if (!error && [408, 429, 500, 502, 503, 504].indexOf(response.statusCode) === -1) {
-                            //delete dead triggers
-                            that.deleteTriggerFromDB(dataTrigger.id);
-                            reject('Deleted dead trigger ' + dataTrigger.id);
+                        if (!error && that.shouldDisableTrigger(response.statusCode)) {
+                            //disable trigger
+                            var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
+                            that.disableTriggerInDB(dataTrigger.id, response.statusCode, message);
+                            reject('Disabled trigger ' + dataTrigger.id + ' due to status code: ' + response.statusCode);
                         }
                         else {
                             if (retryCount > 0) {
@@ -336,11 +381,6 @@ module.exports = function(
                             dataTrigger.triggersLeft--;
                         }
                         logger.info(method, 'fired', dataTrigger.id, dataTrigger.triggersLeft, 'triggers left');
-
-                        if (dataTrigger.triggersLeft === 0) {
-                            logger.info(method, 'no more triggers left, deleting', dataTrigger.id);
-                            that.deleteTriggerFromDB(dataTrigger.id);
-                        }
                         resolve(dataTrigger.id);
                     }
                 }
