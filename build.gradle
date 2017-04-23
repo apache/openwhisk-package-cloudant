@@ -1,2 +1,4 @@
 ext.dockerImageName = 'catalog_cloudanttrigger'
+ext.dockerBinary = '/usr/local/bin/docker'
+ext.dockerHost = 'tcp://192.168.99.100:4243'
 apply from: 'gradle/docker.gradle'
