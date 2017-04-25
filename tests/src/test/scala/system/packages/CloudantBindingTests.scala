@@ -13,20 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog.cloudant
+package system.packages
 
+import common.{TestHelpers, Wsk, WskProps, WskTestHelpers}
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import catalog.CloudantUtil
-import common.TestHelpers
-import common.Wsk
-import common.WskProps
-import common.WskTestHelpers
 import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.JsObject
-import spray.json.pimpAny
+import spray.json.{JsObject, pimpAny}
+import system.CloudantUtil
 
 @RunWith(classOf[JUnitRunner])
 class CloudantBindingTests extends FlatSpec

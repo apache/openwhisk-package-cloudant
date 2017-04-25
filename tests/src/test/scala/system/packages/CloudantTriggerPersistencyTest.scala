@@ -13,22 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package catalog.cloudant
+package system.packages
 
+import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-
-import catalog.CloudantUtil
-import common.TestHelpers
-import common.Wsk
-import common.WskProps
-import common.WhiskProperties
-import common.WskTestHelpers
-import spray.json.DefaultJsonProtocol.IntJsonFormat
-import spray.json.DefaultJsonProtocol.StringJsonFormat
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat}
 import spray.json.pimpAny
-import common.WskActorSystem
+import system.CloudantUtil
 
 /**
  * Tests for Cloudant trigger service
