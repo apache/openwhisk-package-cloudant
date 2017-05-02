@@ -324,7 +324,7 @@ module.exports = function(
         var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
         var auth = apikey.split(':');
 
-        that.postTrigger(dataTrigger, form, uri, auth, that.retryAttempts)
+        that.postTrigger(dataTrigger, form, uri, auth, 0)
          .then(triggerId => {
              logger.info(method, 'Trigger', triggerId, 'was successfully fired');
              if (dataTrigger.triggersLeft === 0) {
@@ -361,16 +361,20 @@ module.exports = function(
                             reject('Disabled trigger ' + dataTrigger.id + ' due to status code: ' + response.statusCode);
                         }
                         else {
-                            if (retryCount > 0) {
-                                logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount - 1));
+                            if (retryCount < that.retryAttempts ) {
+                                var timeout = that.retryDelay;
+                                if (response && response.statusCode === 429) {
+                                    timeout = retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount, 2);
+                                }
+                                logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    that.postTrigger(dataTrigger, form, uri, auth, (retryCount - 1))
+                                    that.postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     }).catch(err => {
                                         reject(err);
                                     });
-                                }, that.retryDelay);
+                                }, timeout);
                             } else {
                                 reject('Unable to reach server to fire trigger ' + dataTrigger.id);
                             }
