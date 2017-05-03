@@ -19,6 +19,8 @@ function main(msg) {
     var protocol = msg.protocol || 'https';
     var port = msg.port;
     var maxTriggers = msg.maxTriggers;
+    var filter;
+    var query_params;
 
     if (lifecycleEvent === 'CREATE') {
 
@@ -42,6 +44,25 @@ function main(msg) {
             return Promise.reject('You must supply a non-default namespace.');
         }
 
+        if (msg.filter) {
+            filter = msg.filter;
+
+            if (typeof msg.query_params === 'object') {
+                query_params = msg.query_params;
+            }
+            else if (typeof msg.query_params === 'string') {
+                try {
+                    query_params = JSON.parse(msg.query_params);
+                }
+                catch (e) {
+                    return Promise.reject('The query_params parameter cannot be parsed. Ensure it is valid JSON.');
+                }
+            }
+        }
+        else if (msg.query_params) {
+            return Promise.reject('The query_params parameter is only allowed if the filter parameter is defined');
+        }
+
         // auth key for trigger
         var apiKey = msg.authKey;
         var input = {};
@@ -54,6 +75,8 @@ function main(msg) {
         input.pass = pass;
         input.apikey = apiKey;
         input.maxTriggers = maxTriggers;
+        input.filter = filter;
+        input.query_params = query_params;
 
         return cloudantHelper(provider_endpoint, 'put', triggerId, input);
     } else if (lifecycleEvent === 'DELETE') {
