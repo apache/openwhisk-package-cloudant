@@ -59,6 +59,12 @@ module.exports = function(
 
             // Listen for changes on this database.
             var feed = triggeredDB.follow({since: sinceToUse, include_docs: false});
+            if (dataTrigger.filter) {
+                feed.filter = dataTrigger.filter;
+            }
+            if (dataTrigger.query_params) {
+                feed.query_params = dataTrigger.query_params;
+            }
 
             dataTrigger.feed = feed;
             that.triggers[dataTrigger.id] = dataTrigger;
@@ -141,7 +147,9 @@ module.exports = function(
             apikey: obj.apikey,
             since: obj.since,
             maxTriggers: obj.maxTriggers,
-            triggersLeft: obj.maxTriggers
+            triggersLeft: obj.maxTriggers,
+            filter: obj.filter,
+            query_params: obj.query_params
         };
 
         return trigger;
