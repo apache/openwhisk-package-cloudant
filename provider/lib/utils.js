@@ -370,10 +370,7 @@ module.exports = function(
                         }
                         else {
                             if (retryCount < that.retryAttempts ) {
-                                var timeout = that.retryDelay;
-                                if (response && response.statusCode === 429) {
-                                    timeout = retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount, 2);
-                                }
+                                var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
                                 logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
                                     that.postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
