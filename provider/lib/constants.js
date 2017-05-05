@@ -1,6 +1,6 @@
 const TRIGGER_DB_SUFFIX = 'cloudanttrigger';
 const DEFAULT_MAX_TRIGGERS = -1;
-const RETRY_ATTEMPTS = 10;
+const RETRY_ATTEMPTS = 12;
 const RETRY_DELAY = 1000; //in milliseconds
 
 module.exports = {
