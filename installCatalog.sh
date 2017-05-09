@@ -58,7 +58,8 @@ $WSK_CLI -i --apihost "$APIHOST" action update --auth "$AUTH" cloudant/changes "
     -t 90000 \
     -a feed true \
     -a description 'Database change feed' \
-    -a parameters '[ {"name":"dbname", "required":true} ]'
+    -a parameters '[ {"name":"dbname", "required":true}, {"name": "filter", "required":false, "type": "string", "description": "The name of your Cloudant database filter"}, {"name": "query_params", "required":false, "description": "JSON Object containing query parameters that are passed to the filter"} ]' \
+    -a sampleInput '{ "dbname": "mydb", "filter": "mailbox/by_status", "query_params": {"status": "new"} }'
 
 # Cloudant account actions
 

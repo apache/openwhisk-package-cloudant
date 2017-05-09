@@ -21,7 +21,7 @@ import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat}
-import spray.json.pimpAny
+import spray.json.{JsObject, JsString, pimpAny}
 import system.CloudantUtil
 
 /**
@@ -233,7 +233,7 @@ class CloudantFeedTests
     it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
-        val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -281,6 +281,77 @@ class CloudantFeedTests
                 newactivations should be(1)
 
             } finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
+
+    it should """filter out triggers that do not meet the filter criteria""" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                //Create filter design doc
+                val filterDesignDoc = CloudantUtil.createDesignFromFile(CloudantUtil.FILTER_DDOC_PATH).toString
+                val getResponse = CloudantUtil.createDocument(myCloudantCreds, filterDesignDoc)
+                getResponse.get("ok").getAsString shouldBe "true"
+
+                println("Creating cloudant trigger feed.")
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> myCloudantCreds.user.toJson,
+                            "password" -> myCloudantCreds.password.toJson,
+                            "host" -> myCloudantCreds.host().toJson,
+                            "dbname" -> myCloudantCreds.dbname.toJson,
+                            "filter" -> "test_filter/fruit".toJson,
+                            "query_params" -> JsObject("type" -> JsString("tomato"))))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                // Create test docs in cloudant and assert that document was inserted successfully
+                println("Creating a test doc-1 in the cloudant")
+                val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
+                response1.get("ok").getAsString() should be("true")
+
+                println("Checking for activations")
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+                println(s"Found activation size (should be exactly 1): $activations")
+                activations should be(1)
+
+                println("Creating a test doc-2 in the cloudant")
+                val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"dairy\",\"type\":\"butter\"}")
+                response2.get("ok").getAsString() should be("true")
+
+                println("checking for new activations (not expected since it should be filtered out)")
+                val noNewActivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
+                println(s"Found activation size (should still be 1): $noNewActivations")
+                noNewActivations should be(1)
+
+                println("Creating a test doc-3 in the cloudant")
+                val response3 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"debatable\", \"type\":\"tomato\"}")
+                response3.get("ok").getAsString() should be("true")
+
+                println("Checking for new activations (should now have 2)")
+                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName)).length
+                println(s"Found activation size (should be 2): $newActivations")
+                newActivations should be(2)
+
+            }
+            finally {
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
     }
