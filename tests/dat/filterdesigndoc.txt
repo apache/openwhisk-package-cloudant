@@ -1,0 +1,6 @@
+{
+  "_id": "_design/test_filter",
+    "filters": {
+      "fruit": "function (doc, req) { return doc.kind === 'fruit' || (req && req.query && req.query.type === doc.type); }"
+    }
+}

@@ -50,6 +50,7 @@ public class CloudantUtil {
     public static final File ATTACHMENT_FILE_PATH = getFileRelativeToCloudantHome("tests/dat/attach.txt");
     public static final File INDEX_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/indexdesigndoc.txt");
     public static final File VIEW_AND_SEARCH_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/searchdesigndoc.txt");
+    public static final File FILTER_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/filterdesigndoc.txt");
 
 
     private static Gson gson = new Gson();
