@@ -1,4 +1,6 @@
 # Using the Cloudant package
+[![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-cloudant.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-cloudant)
+
 The `/whisk.system/cloudant` package enables you to work with a Cloudant database. It includes the following actions and feeds.
 
 | Entity | Type | Parameters | Description |
