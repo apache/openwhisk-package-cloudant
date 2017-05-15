@@ -69,18 +69,38 @@ module.exports = function(
             dataTrigger.feed = feed;
             that.triggers[dataTrigger.id] = dataTrigger;
 
-            feed.on('change', function (change) {
-                logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
+            var batchedChanges = [];
 
+            var fireTrigger = function (payload) {
                 var triggerHandle = that.triggers[dataTrigger.id];
                 if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
                     try {
-                        that.fireTrigger(dataTrigger.id, change);
+                        that.fireTrigger(dataTrigger.id, payload);
                     } catch (e) {
                         logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id,  e);
                     }
                 }
+            };
+
+            feed.on('change', function (change) {
+                logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
+
+                if(dataTrigger.batchChanges) {
+                    batchedChanges.push(change);
+                } else {
+                    fireTrigger(change);
+                }
             });
+
+            if(dataTrigger.batchChanges) {
+                var triggerHandle = that.triggers[dataTrigger.id];
+                triggerHandle.interval = setInterval(function() {
+                    if(batchedChanges.length > 0) {
+                        fireTrigger(batchedChanges);
+                        batchedChanges = [];
+                    }
+                }, constants.BATCH_INTERVAL_MS);
+            }
 
             feed.follow();
 
@@ -309,6 +329,11 @@ module.exports = function(
         if (trigger) {
             logger.info(method, 'Stopped cloudant trigger', id, 'listening for changes in database', trigger.dbname);
             trigger.feed.stop();
+
+            if(trigger.interval) {
+                clearInterval(trigger.interval);
+            }
+
             delete that.triggers[id];
         } else {
             logger.info(method, 'trigger', id, 'could not be found in the trigger list.');
@@ -316,14 +341,19 @@ module.exports = function(
         }
     };
 
-    this.fireTrigger = function (id, change) {
+    this.fireTrigger = function (id, changes) {
         var method = 'fireTrigger';
 
         var dataTrigger = that.triggers[id];
         var apikey = dataTrigger.apikey;
         var triggerObj = that.parseQName(dataTrigger.id);
 
-        var form = change;
+        var form; // the trigger payload
+        if(Array.isArray(changes)) {
+            form = { 'changes': changes };
+        } else {
+            form = changes;
+        }
         form.dbname = dataTrigger.dbname;
 
         logger.info(method, 'firing trigger', dataTrigger.id, 'with db update');
