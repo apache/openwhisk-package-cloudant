@@ -40,39 +40,6 @@ class CloudantFeedTests
 
     behavior of "Cloudant trigger service"
 
-    it should "fail on create feed when includeDocs is set" in withAssetCleaner(wskprops) {
-
-        (wp, assetHelper) =>
-            implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
-            val feed = "changes"
-
-            val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-            println("Fetching cloudant package.")
-            packageGetResult.stdout should include("ok")
-
-            println("Creating cloudant package binding.")
-            assetHelper.withCleaner(wsk.pkg, packageName) {
-                (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-            }
-
-            println("Creating cloudant trigger feed.")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
-                (trigger, name) =>
-                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                        "username" -> myCloudantCreds.user.toJson,
-                        "password" -> myCloudantCreds.password.toJson,
-                        "host" -> myCloudantCreds.host().toJson,
-                        "dbname" -> myCloudantCreds.dbname.toJson,
-                        "includeDoc" -> "true".toJson,
-                        "maxTriggers" -> 1.toJson),
-                        expectedExitCode = 246)
-            }
-            feedCreationResult.stderr should include("includeDoc parameter is no longer supported")
-
-    }
-
     it should "return useful error message when changes feed does not include host parameter" in withAssetCleaner(wskprops) {
 
         (wp, assetHelper) =>
@@ -197,7 +164,7 @@ class CloudantFeedTests
 
     }
 
-    it should "delete trigger if its Cloudant connection is not created" in withAssetCleaner(wskprops) {
+    it should "throw error if Cloudant connection is invalid" in withAssetCleaner(wskprops) {
 
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
@@ -230,7 +197,7 @@ class CloudantFeedTests
 
     }
 
-    it should "should disable after reaching max triggers" in withAssetCleaner(wskprops) {
+    it should "disable after reaching max triggers" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
@@ -267,7 +234,7 @@ class CloudantFeedTests
                 response1.get("ok").getAsString() should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 5).length
+                val activations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 

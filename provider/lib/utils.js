@@ -1,64 +1,44 @@
 var _ = require('lodash');
 var request = require('request');
 var constants = require('./constants.js');
-
+var HttpStatus = require('http-status-codes');
 
 module.exports = function(
   logger,
-  app,
-  triggerDB,
-  routerHost
+  triggerDB
 ) {
-
-    this.logger = logger;
-    this.app = app;
-    this.triggerDB = triggerDB;
-    this.routerHost = routerHost;
-
-    // this is the default trigger fire limit (in the event that it was not set during trigger creation)
-    this.defaultTriggerFireLimit = constants.DEFAULT_MAX_TRIGGERS;
-    this.retryDelay = constants.RETRY_DELAY;
-    this.retryAttempts = constants.RETRY_ATTEMPTS;
-
-    // Log HTTP Requests
-    app.use(function(req, res, next) {
-        if (req.url.indexOf('/cloudanttriggers') === 0) {
-            logger.info('HttpRequest', req.method, req.url);
-        }
-        next();
-    });
-
     this.module = 'utils';
     this.triggers = {};
+    this.endpointAuth = process.env.ENDPOINT_AUTH;
+    this.routerHost = process.env.ROUTER_HOST || 'localhost';
+    this.active =  !(process.env.ACTIVE && process.env.ACTIVE.toLowerCase() === 'false');
+    this.worker = process.env.WORKER || "worker0";
 
-    var that = this;
+    this.retryAttempts = constants.RETRY_ATTEMPTS;
+
+    var ddname = 'triggers';
+    var filter = 'only_triggers_by_worker';
+
+    var utils = this;
 
     // Add a trigger: listen for changes and dispatch.
-    this.createTrigger = function(dataTrigger, retryCount) {
-
+    this.createTrigger = function(dataTrigger) {
         var method = 'createTrigger';
 
-        var sinceToUse = dataTrigger.since ? dataTrigger.since : "now";
-        var dbProtocol = dataTrigger.protocol ? dataTrigger.protocol : 'https';
-
-        // unless specified host will default to accounturl without the https:// in front
-        var dbHost = dataTrigger.host ? dataTrigger.host : dataTrigger.accounturl.replace('https://','');
-
         // both couch and cloudant should have their URLs in the username:password@host format
-        var dbURL = dbProtocol + '://' + dataTrigger.user + ':' + dataTrigger.pass + '@' + dbHost;
+        var dbURL = `${dataTrigger.protocol}://${dataTrigger.user}:${dataTrigger.pass}@${dataTrigger.host}`;
 
         // add port if specified
         if (dataTrigger.port) {
-            dbURL = dbURL + ':' + dataTrigger.port;
+            dbURL += ':' + dataTrigger.port;
         }
 
-        var nanoConnection = require('nano')(dbURL);
-
         try {
+            var nanoConnection = require('nano')(dbURL);
             var triggeredDB = nanoConnection.use(dataTrigger.dbname);
 
             // Listen for changes on this database.
-            var feed = triggeredDB.follow({since: sinceToUse, include_docs: false});
+            var feed = triggeredDB.follow({since: dataTrigger.since, include_docs: false});
             if (dataTrigger.filter) {
                 feed.filter = dataTrigger.filter;
             }
@@ -67,17 +47,19 @@ module.exports = function(
             }
 
             dataTrigger.feed = feed;
-            that.triggers[dataTrigger.id] = dataTrigger;
+            utils.triggers[dataTrigger.id] = dataTrigger;
 
             feed.on('change', function (change) {
-                logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
+                if (utils.active) {
+                    logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
 
-                var triggerHandle = that.triggers[dataTrigger.id];
-                if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                    try {
-                        that.fireTrigger(dataTrigger.id, change);
-                    } catch (e) {
-                        logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id,  e);
+                    var triggerHandle = utils.triggers[dataTrigger.id];
+                    if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
+                        try {
+                            utils.fireTrigger(dataTrigger.id, change);
+                        } catch (e) {
+                            logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id, e);
+                        }
                     }
                 }
             });
@@ -86,34 +68,17 @@ module.exports = function(
 
             return new Promise(function(resolve, reject) {
 
-            feed.on('error', function (err) {
-                logger.error(method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
-                // revive the feed if an error occurred for now
-                that.deleteTrigger(dataTrigger.id);
-                dataTrigger.since = "now";
-                if (retryCount > 0) {
-                    logger.info(method, 'attempting to recreate trigger', dataTrigger.id, 'Retry Count:', (retryCount - 1));
-                    that.createTrigger(dataTrigger, (retryCount - 1))
-                    .then(trigger => {
-                        resolve(trigger);
-                    }).catch(err => {
-                        reject(err);
-                    });
-                } else {
-                    logger.error(method, "Trigger's feed produced too many errors. Deleting the trigger", dataTrigger.id, '(db ' + dataTrigger.dbname + ')');
-                    reject({
-                        error: err,
-                        message: "Trigger's feed produced too many errors. Deleting the trigger " + dataTrigger.id
-                    });
-                }
-            });
+                feed.on('error', function (err) {
+                    logger.error(method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
+                    reject(err);
+                });
 
-            feed.on('confirm', function (dbObj) {
-                logger.info(method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
-                resolve(dataTrigger);
-            });
+                feed.on('confirm', function (dbObj) {
+                    logger.info(method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
+                    resolve(dataTrigger.id);
+                });
 
-        });
+            });
 
         } catch (err) {
             logger.info(method, 'caught an exception for trigger', dataTrigger.id, err);
@@ -122,226 +87,107 @@ module.exports = function(
 
     };
 
-    this.initTrigger = function (obj, id) {
-
+    this.initTrigger = function (newTrigger) {
         var method = 'initTrigger';
 
-        // validate parameters here
-        logger.info(method, 'create trigger', id, 'with the following args', obj);
+        logger.info(method, 'create trigger', newTrigger.id, 'with the following args', newTrigger);
 
-        // if the trigger creation request has not set the max trigger fire limit
-        // we will set it here (default value can be updated in ./constants.js)
-        if (!obj.maxTriggers) {
-        	obj.maxTriggers = that.defaultTriggerFireLimit;
-        }
+        var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
 
         var trigger = {
-            id: id,
-            accounturl: obj.accounturl,
-            dbname: obj.dbname,
-            user: obj.user,
-            pass: obj.pass,
-            host: obj.host,
-            port: obj.port,
-            protocol: obj.protocol,
-            apikey: obj.apikey,
-            since: obj.since,
-            maxTriggers: obj.maxTriggers,
-            triggersLeft: obj.maxTriggers,
-            filter: obj.filter,
-            query_params: obj.query_params
+            id: newTrigger.id,
+            host: newTrigger.host,
+            port: newTrigger.port,
+            protocol: newTrigger.protocol || "https",
+            dbname: newTrigger.dbname,
+            user: newTrigger.user,
+            pass: newTrigger.pass,
+            apikey: newTrigger.apikey,
+            since: newTrigger.since || "now",
+            maxTriggers: maxTriggers,
+            triggersLeft: maxTriggers,
+            filter: newTrigger.filter,
+            query_params: newTrigger.query_params
         };
 
         return trigger;
     };
 
-    this.initAllTriggers = function () {
+    this.shouldDisableTrigger = function (statusCode) {
+        return ((statusCode >= 400 && statusCode < 500) &&
+            [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
+    };
 
-        var method = 'initAllTriggers';
-        logger.info(method, 'Initializing all cloudant triggers from database.');
+    this.disableTrigger = function (id, statusCode, message) {
+        var method = 'disableTrigger';
 
-        triggerDB.view('filters', 'only_triggers', {include_docs: true}, function(err, body) {
-            if (!err) {
-                body.rows.forEach(function(trigger) {
-                    if (!trigger.doc.status || trigger.doc.status.active === true) {
-                        //check if trigger still exists in whisk db
-                        var triggerObj = that.parseQName(trigger.doc.id);
-                        var host = 'https://' + routerHost + ':' + 443;
-                        var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-                        var auth = trigger.doc.apikey.split(':');
+        //only active/master provider should update the database
+        if (utils.active) {
+            triggerDB.get(id, function (err, existing) {
+                if (!err) {
+                    if (!existing.status || existing.status.active === true) {
+                        var updatedTrigger = existing;
+                        var status = {
+                            'active': false,
+                            'dateChanged': new Date().toISOString(),
+                            'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
+                        };
+                        updatedTrigger.status = status;
 
-                        logger.info(method, 'Checking if trigger', trigger.doc.id, 'still exists');
-                        request({
-                            method: 'get',
-                            url: triggerURL,
-                            auth: {
-                                user: auth[0],
-                                pass: auth[1]
-                            }
-                        }, function (error, response) {
-                            //disable trigger in database if trigger is dead
-                            if (!error && that.shouldDisableTrigger(response.statusCode)) {
-                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when re-creating the trigger';
-                                that.disableTriggerInDB(trigger.doc.id, response.statusCode, message);
-                                logger.error(method, 'trigger', trigger.doc.id, 'has been disabled due to status code:', response.statusCode);
+                        triggerDB.insert(updatedTrigger, id, function (err) {
+                            if (err) {
+                                logger.error(method, 'there was an error while disabling', id, 'in database. ' + err);
                             }
                             else {
-                                var cloudantTrigger = that.initTrigger(trigger.doc, trigger.doc.id);
-                                that.createTrigger(cloudantTrigger, that.retryAttempts)
-                                .then(newTrigger => {
-                                    logger.info(method, 'Trigger was added.', newTrigger.id);
-                                }).catch(err => {
-                                    var message = 'Automatically disabled after receiving an exception when re-creating the trigger';
-                                    that.disableTriggerInDB(cloudantTrigger.id, undefined, message);
-                                    logger.error(method, 'Disabled trigger', cloudantTrigger.id, 'due to exception:', err);
-                                });
+                                logger.info(method, 'trigger', id, 'successfully disabled in database');
                             }
                         });
                     }
-                    else {
-                        logger.info(method, 'ignoring trigger', trigger.doc._id, 'since it is disabled.');
-                    }
-                });
-            } else {
-                logger.error(method, 'could not get latest state from database');
-            }
-        });
-
-    };
-
-    this.addTriggerToDB = function (trigger, res) {
-
-        var method = 'addTriggerToDB';
-        triggerDB.insert(_.omit(trigger, 'feed'), trigger.id, function(err) {
-            if (!err) {
-                logger.info(method, 'trigger', trigger.id, 'was inserted into db.');
-                res.status(200).json(_.omit(trigger, 'feed'));
-            } else {
-                that.deleteTrigger(trigger.id);
-                res.status(err.statusCode).json({error: 'Cloudant trigger cannot be created. ' + err});
-            }
-        });
-
-    };
-
-    this.shouldDisableTrigger = function (statusCode) {
-        return ((statusCode >= 400 && statusCode < 500) && [408, 429].indexOf(statusCode) === -1);
-    };
-
-    this.disableTriggerInDB = function (id, statusCode, message) {
-
-        var method = 'disableTriggerInDB';
-
-        triggerDB.get(id, function (err, existing) {
-            if (!err) {
-                if (!existing.status || existing.status.active === true) {
-                    var updatedTrigger = existing;
-                    var status = {
-                        'active': false,
-                        'dateChanged': new Date().toISOString(),
-                        'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
-                    };
-                    updatedTrigger.status = status;
-
-                    triggerDB.insert(updatedTrigger, id, function (err) {
-                        if (err) {
-                            logger.error(method, 'there was an error while disabling', id, 'in database. ' + err);
-                        }
-                        else {
-                            that.deleteTrigger(id);
-                            logger.info(method, 'trigger', id, 'successfully disabled in database');
-                        }
-                    });
                 }
-            }
-            else {
-                if (err.statusCode === 404) {
-                    logger.error(method, 'there was no trigger with id', id, 'in database.', err.error);
-                } else {
+                else {
                     logger.error(method, 'there was an error while getting', id, 'from database', err);
                 }
-            }
-        });
-    };
-
-    this.deleteTriggerFromDB = function (id, res) {
-
-        var method = 'deleteTriggerFromDB';
-
-        triggerDB.get(id, function(err, existing) {
-            if (!err) {
-                triggerDB.destroy(existing._id, existing._rev, function(err) {
-                    if (err) {
-                        logger.error(method, 'there was an error while deleting', id, 'from database. ' + err);
-                        if (res) {
-                            res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + 'cannot be deleted. ' + err } );
-                        }
-                    } else {
-                        that.deleteTrigger(id);
-                        logger.info(method, 'cloudant trigger', id, ' is successfully deleted');
-                        if (res) {
-                            res.send('Deleted cloudant trigger ' + id);
-                        }
-                    }
-                });
-            } else {
-                if (err.statusCode === 404) {
-                    logger.info(method, 'there was no trigger with id', id, 'in database.', err.error);
-                    if (res) {
-                        res.status(404).json({ message: 'there was no trigger with id ' + id + ' in database.' } );
-                        res.end();
-                    }
-                } else {
-                    logger.error(method, 'there was an error while getting', id, 'from database', err);
-                    if (res) {
-                        res.status(err.statusCode).json({ error: 'Cloudant data trigger ' + id  + ' cannot be deleted. ' + err } );
-                    }
-                }
-            }
-        });
-
-    };
-
-    // Delete a trigger: stop listening for changes and remove it.
-    this.deleteTrigger = function (id) {
-        var method = 'deleteTrigger';
-        var trigger = that.triggers[id];
-        if (trigger) {
-            logger.info(method, 'Stopped cloudant trigger', id, 'listening for changes in database', trigger.dbname);
-            trigger.feed.stop();
-            delete that.triggers[id];
-        } else {
-            logger.info(method, 'trigger', id, 'could not be found in the trigger list.');
-            return false;
+            });
         }
     };
 
-    this.fireTrigger = function (id, change) {
+    // Delete a trigger: stop listening for changes and remove it.
+    this.deleteTrigger = function (triggerIdentifier) {
+        var method = 'deleteTrigger';
+
+        if (utils.triggers[triggerIdentifier].feed) {
+            utils.triggers[triggerIdentifier].feed.stop();
+        }
+
+        delete utils.triggers[triggerIdentifier];
+        logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
+    };
+
+    this.fireTrigger = function (triggerIdentifier, change) {
         var method = 'fireTrigger';
 
-        var dataTrigger = that.triggers[id];
-        var apikey = dataTrigger.apikey;
-        var triggerObj = that.parseQName(dataTrigger.id);
+        var dataTrigger = utils.triggers[triggerIdentifier];
+        var triggerObj = utils.parseQName(dataTrigger.id);
 
         var form = change;
         form.dbname = dataTrigger.dbname;
 
         logger.info(method, 'firing trigger', dataTrigger.id, 'with db update');
 
-        var host = 'https://' + routerHost + ':' + 443;
+        var host = 'https://' + utils.routerHost + ':' + 443;
         var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-        var auth = apikey.split(':');
+        var auth = dataTrigger.apikey.split(':');
 
-        that.postTrigger(dataTrigger, form, uri, auth, 0)
-         .then(triggerId => {
-             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-             if (dataTrigger.triggersLeft === 0) {
-                 that.disableTriggerInDB(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
-                 logger.error(method, 'no more triggers left, disabled', dataTrigger.id);
-             }
-         }).catch(err => {
-             logger.error(method, err);
-         });
+        utils.postTrigger(dataTrigger, form, uri, auth, 0)
+        .then(triggerId => {
+            logger.info(method, 'Trigger', triggerId, 'was successfully fired');
+            if (dataTrigger.triggersLeft === 0) {
+                utils.disableTrigger(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
+                logger.error(method, 'no more triggers left, disabled', dataTrigger.id);
+            }
+        }).catch(err => {
+            logger.error(method, err);
+        });
     };
 
     this.postTrigger = function (dataTrigger, form, uri, auth, retryCount) {
@@ -362,18 +208,18 @@ module.exports = function(
                     logger.info(method, dataTrigger.id, 'http post request, STATUS:', response ? response.statusCode : response);
                     if (error || response.statusCode >= 400) {
                         logger.error(method, 'there was an error invoking', dataTrigger.id, response ? response.statusCode : error);
-                        if (!error && that.shouldDisableTrigger(response.statusCode)) {
+                        if (!error && utils.shouldDisableTrigger(response.statusCode)) {
                             //disable trigger
                             var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
-                            that.disableTriggerInDB(dataTrigger.id, response.statusCode, message);
+                            utils.disableTrigger(dataTrigger.id, response.statusCode, message);
                             reject('Disabled trigger ' + dataTrigger.id + ' due to status code: ' + response.statusCode);
                         }
                         else {
-                            if (retryCount < that.retryAttempts ) {
+                            if (retryCount < utils.retryAttempts ) {
                                 var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
                                 logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    that.postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
+                                    utils.postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     }).catch(err => {
@@ -400,6 +246,139 @@ module.exports = function(
         });
     };
 
+    this.initAllTriggers = function () {
+        var method = 'initAllTriggers';
+
+        logger.info(method, 'resetting system from last state');
+
+        triggerDB.changes({ since: 0, include_docs: true, filter: ddname + '/' + filter, worker: utils.worker }, (err, changes) => {
+            if (!err) {
+                changes.results.forEach(function (change) {
+                    var triggerIdentifier = change.id;
+                    var doc = change.doc;
+
+                    if (!doc.status || doc.status.active === true) {
+                        //check if trigger still exists in whisk db
+                        var triggerObj = utils.parseQName(triggerIdentifier);
+                        var host = 'https://' + utils.routerHost + ':' + 443;
+                        var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
+                        var auth = doc.apikey.split(':');
+
+                        logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
+                        request({
+                            method: 'get',
+                            url: triggerURL,
+                            auth: {
+                                user: auth[0],
+                                pass: auth[1]
+                            }
+                        }, function (error, response) {
+                            //disable trigger in database if trigger is dead
+                            if (!error && utils.shouldDisableTrigger(response.statusCode)) {
+                                var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code on init trigger';
+                                utils.disableTrigger(triggerIdentifier, response.statusCode, message);
+                                logger.error(method, 'trigger', triggerIdentifier, 'has been disabled due to status code:', response.statusCode);
+                            }
+                            else {
+                                utils.createTrigger(utils.initTrigger(doc))
+                                .then(triggerIdentifier => {
+                                    logger.info(method, 'Trigger was added.', triggerIdentifier);
+                                }).catch(err => {
+                                    var message = 'Automatically disabled after receiving exception on init trigger: ' + err;
+                                    utils.disableTrigger(triggerIdentifier, undefined, message);
+                                    logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                                });
+                            }
+                        });
+                    }
+                    else {
+                        logger.info(method, 'ignoring trigger', triggerIdentifier, 'since it is disabled.');
+                    }
+                });
+                utils.setupFollow(changes.last_seq);
+            } else {
+                logger.error(method, 'could not get latest state from database', err);
+            }
+        });
+    };
+
+    this.setupFollow = function setupFollow(seq) {
+        var method = 'setupFollow';
+
+        var feed = triggerDB.follow({ since: seq, include_docs: true, filter: ddname + '/' + filter, query_params: { worker: utils.worker } });
+
+        feed.on('change', (change) => {
+            var triggerIdentifier = change.id;
+            var doc = change.doc;
+
+            logger.info(method, 'got change for trigger', triggerIdentifier);
+
+            if (utils.triggers[triggerIdentifier]) {
+                if (doc.status && doc.status.active === false) {
+                    utils.deleteTrigger(triggerIdentifier);
+                }
+            }
+            else {
+                //ignore changes to disabled triggers
+                if (!doc.status || doc.status.active === true) {
+                    utils.createTrigger(utils.initTrigger(doc))
+                    .then(triggerIdentifier => {
+                        logger.info(method, triggerIdentifier, 'created successfully');
+                    }).catch(err => {
+                        var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
+                        utils.disableTrigger(triggerIdentifier, undefined, message);
+                        logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
+                    });
+                }
+            }
+        });
+        feed.follow();
+    };
+
+    this.authorize = function(req, res, next) {
+        var method = 'authorize';
+
+        if (utils.endpointAuth) {
+
+            if (!req.headers.authorization) {
+                return utils.sendError(method, HttpStatus.BAD_REQUEST, 'Malformed request, authentication header expected', res);
+            }
+
+            var parts = req.headers.authorization.split(' ');
+            if (parts[0].toLowerCase() !== 'basic' || !parts[1]) {
+                return utils.sendError(method, HttpStatus.BAD_REQUEST, 'Malformed request, basic authentication expected', res);
+            }
+
+            var auth = new Buffer(parts[1], 'base64').toString();
+            auth = auth.match(/^([^:]*):(.*)$/);
+            if (!auth) {
+                return utils.sendError(method, HttpStatus.BAD_REQUEST, 'Malformed request, authentication invalid', res);
+            }
+
+            var uuid = auth[1];
+            var key = auth[2];
+
+            var endpointAuth = utils.endpointAuth.split(':');
+
+            if (endpointAuth[0] === uuid && endpointAuth[1] === key) {
+                logger.info(method, 'Authentication successful');
+                next();
+            }
+            else {
+                logger.warn(method, 'Invalid key');
+                return utils.sendError(method, HttpStatus.UNAUTHORIZED, 'Invalid key', res);
+            }
+        }
+        else {
+            next();
+        }
+    };
+
+    this.sendError = function (method, code, message, res) {
+        logger.error(method, message);
+        res.status(code).json({error: message});
+    };
+
     this.parseQName = function (qname, separator) {
         var parsed = {};
         var delimiter = separator || ':';
@@ -413,10 +392,6 @@ module.exports = function(
             parsed.name = qname;
         }
         return parsed;
-    };
-
-    this.authorize = function(req, res, next) {
-        next();
     };
 
 };
