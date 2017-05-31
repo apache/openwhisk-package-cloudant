@@ -98,7 +98,7 @@ If you're not using OpenWhisk in Bluemix or if you want to set up your Cloudant 
 
 ### Filter database change events
 
-You can defined a filter function, to avoid having unnecessary change events firing your trigger.
+You can define a filter function, to avoid having unnecessary change events firing your trigger.
 
 To create a new filter function you can use an action.
 
@@ -119,6 +119,7 @@ Create a new design document on the database with the filter function
 ```
 wsk action invoke /_/myCloudant/write -p dbname testdb -p overwrite true -P design_doc.json -r
 ```
+The information for the new design document is printed on the screen.
 ```json
 {
     "id": "_design/mailbox",
@@ -134,10 +135,10 @@ You can use the `changes` feed to configure a service to fire a trigger on every
 - `dbname`: Name of Cloudant database.
 - `maxTriggers`: Stop firing triggers when this limit is reached. Defaults to infinite.
 - `filter`: Filter function defined on a design document.
-- `query_params`: Optional query parameter for the filter function.
+- `query_params`: Optional query parameters for the filter function.
 
 
-1. Create a trigger with the `changes` feed in the package binding that you created previously including `filter` and `query_params` to only fire the trigger when a document is change or modify when the status is `new`.
+1. Create a trigger with the `changes` feed in the package binding that you created previously including `filter` and `query_params` to only fire the trigger when a document is added or modified when the status is `new`.
 Be sure to replace `/_/myCloudant` with your package name.
 
   ```
