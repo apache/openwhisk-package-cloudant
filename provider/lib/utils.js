@@ -5,14 +5,18 @@ var HttpStatus = require('http-status-codes');
 
 module.exports = function(
   logger,
-  triggerDB
+  triggerDB,
+  redisClient
 ) {
     this.module = 'utils';
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
-    this.active =  !(process.env.ACTIVE && process.env.ACTIVE.toLowerCase() === 'false');
+    this.active = process.env.ACTIVE !== undefined ? process.env.ACTIVE.toLowerCase() : 'true';
     this.worker = process.env.WORKER || "worker0";
+    this.host = this.active === 'true' ? 'host0' : 'host1';
+    this.redisClient = redisClient;
+    this.redisHash = triggerDB.config.db + '_' + this.worker;
 
     this.retryAttempts = constants.RETRY_ATTEMPTS;
 
@@ -50,7 +54,7 @@ module.exports = function(
             utils.triggers[dataTrigger.id] = dataTrigger;
 
             feed.on('change', function (change) {
-                if (utils.active) {
+                if (utils.active === 'true') {
                     logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
 
                     var triggerHandle = utils.triggers[dataTrigger.id];
@@ -87,7 +91,7 @@ module.exports = function(
 
     };
 
-    this.initTrigger = function (newTrigger) {
+    this.initTrigger = function(newTrigger) {
         var method = 'initTrigger';
 
         logger.info(method, 'create trigger', newTrigger.id, 'with the following args', newTrigger);
@@ -113,16 +117,16 @@ module.exports = function(
         return trigger;
     };
 
-    this.shouldDisableTrigger = function (statusCode) {
+    this.shouldDisableTrigger = function(statusCode) {
         return ((statusCode >= 400 && statusCode < 500) &&
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
     };
 
-    this.disableTrigger = function (id, statusCode, message) {
+    this.disableTrigger = function(id, statusCode, message) {
         var method = 'disableTrigger';
 
         //only active/master provider should update the database
-        if (utils.active) {
+        if (utils.active === 'true') {
             triggerDB.get(id, function (err, existing) {
                 if (!err) {
                     if (!existing.status || existing.status.active === true) {
@@ -152,7 +156,7 @@ module.exports = function(
     };
 
     // Delete a trigger: stop listening for changes and remove it.
-    this.deleteTrigger = function (triggerIdentifier) {
+    this.deleteTrigger = function(triggerIdentifier) {
         var method = 'deleteTrigger';
 
         if (utils.triggers[triggerIdentifier].feed) {
@@ -163,7 +167,7 @@ module.exports = function(
         logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
     };
 
-    this.fireTrigger = function (triggerIdentifier, change) {
+    this.fireTrigger = function(triggerIdentifier, change) {
         var method = 'fireTrigger';
 
         var dataTrigger = utils.triggers[triggerIdentifier];
@@ -190,7 +194,7 @@ module.exports = function(
         });
     };
 
-    this.postTrigger = function (dataTrigger, form, uri, auth, retryCount) {
+    this.postTrigger = function(dataTrigger, form, uri, auth, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -246,7 +250,7 @@ module.exports = function(
         });
     };
 
-    this.initAllTriggers = function () {
+    this.initAllTriggers = function() {
         var method = 'initAllTriggers';
 
         logger.info(method, 'resetting system from last state');
@@ -302,7 +306,7 @@ module.exports = function(
         });
     };
 
-    this.setupFollow = function setupFollow(seq) {
+    this.setupFollow = function(seq) {
         var method = 'setupFollow';
 
         var feed = triggerDB.follow({ since: seq, include_docs: true, filter: ddname + '/' + filter, query_params: { worker: utils.worker } });
@@ -361,7 +365,6 @@ module.exports = function(
             var endpointAuth = utils.endpointAuth.split(':');
 
             if (endpointAuth[0] === uuid && endpointAuth[1] === key) {
-                logger.info(method, 'Authentication successful');
                 next();
             }
             else {
@@ -374,12 +377,12 @@ module.exports = function(
         }
     };
 
-    this.sendError = function (method, code, message, res) {
+    this.sendError = function(method, code, message, res) {
         logger.error(method, message);
         res.status(code).json({error: message});
     };
 
-    this.parseQName = function (qname, separator) {
+    this.parseQName = function(qname, separator) {
         var parsed = {};
         var delimiter = separator || ':';
         var defaultNamespace = '_';
@@ -392,6 +395,67 @@ module.exports = function(
             parsed.name = qname;
         }
         return parsed;
+    };
+
+    this.initRedis = function() {
+        var method = 'initRedis';
+
+        return new Promise(function(resolve, reject) {
+
+            if (redisClient) {
+                var subscriber = redisClient.duplicate();
+
+                //create a subscriber client that listens for requests to perform swap
+                subscriber.on("message", function (channel, message) {
+                    if (message === 'active swap') {
+                        logger.info(method, message, "message was sent for channel", channel);
+                        utils.swapActiveState();
+                    }
+                });
+
+                subscriber.subscribe(utils.redisHash);
+
+                redisClient.hgetAsync(utils.redisHash, utils.host)
+                    .then(active => {
+                        return utils.initActiveState(active);
+                    })
+                    .then(resolve)
+                    .catch(err => {
+                        reject(err);
+                    });
+            }
+            else {
+                resolve();
+            }
+        });
+    };
+
+    this.initActiveState = function(isActive) {
+        var method = 'initActiveState';
+
+        if (isActive === null) {
+            //initialize redis key with active state
+            logger.info(method, 'redis hset', utils.redisHash, utils.host, utils.active);
+            return redisClient.hsetAsync(utils.redisHash, utils.host, utils.active);
+        }
+        else {
+            utils.active = isActive;
+            return Promise.resolve();
+        }
+    };
+
+    this.swapActiveState = function() {
+        var method = 'swapActiveState';
+
+        var active = utils.active === 'true' ? 'false' : 'true';
+
+        redisClient.hsetAsync(utils.redisHash, utils.host, active)
+            .then(() => {
+                utils.active = active;
+            })
+            .catch(err => {
+                logger.error(method, 'active swap failed', err);
+            });
     };
 
 };
