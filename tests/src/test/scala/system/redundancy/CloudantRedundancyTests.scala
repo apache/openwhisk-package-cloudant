@@ -28,7 +28,7 @@ import system.CloudantUtil
 /**
  * These tests verify that a cloudant redundancy (master/slave) configuration
  * works as expected.  They will only run properly in an environment with two
- * alarms containers running concurrently and env var ACTIVE set to true in
+ * cloudant containers running concurrently and env var ACTIVE set to true in
  * one container and false in the other.  This test also assumes that redis and
  * the active endpoint authorization are configured.  For the auth set the
  * ENDPOINT_AUTH env var in your containers to match the testing.auth property

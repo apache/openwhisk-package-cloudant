@@ -19,10 +19,9 @@ module.exports = function(
     this.redisHash = triggerDB.config.db + '_' + this.worker;
     this.redisKey = constants.REDIS_KEY;
 
-    this.retryAttempts = constants.RETRY_ATTEMPTS;
-
-    var ddname = 'triggers';
-    var filter = 'only_triggers_by_worker';
+    var retryAttempts = constants.RETRY_ATTEMPTS;
+    var ddname = constants.DESIGN_DOC_NAME;
+    var filter = constants.FILTER_FUNCTION;
 
     var utils = this;
 
@@ -220,7 +219,7 @@ module.exports = function(
                             reject('Disabled trigger ' + dataTrigger.id + ' due to status code: ' + response.statusCode);
                         }
                         else {
-                            if (retryCount < utils.retryAttempts ) {
+                            if (retryCount < retryAttempts ) {
                                 var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
                                 logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
