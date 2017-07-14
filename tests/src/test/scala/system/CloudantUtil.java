@@ -251,7 +251,7 @@ public class CloudantUtil {
         docs.add("docs", bulkDocs);
         // use GET to get the document
         String dbname = credential.dbname;
-        Response response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).contentType("application/json").body(docs).post("/" + credential.dbname + "/_bulk_docs?include_docs=true");
+        Response response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).contentType("application/json").body(docs.toString()).post("/" + credential.dbname + "/_bulk_docs?include_docs=true");
         String responseStr = response.asString();
         if (responseStr.length() > 500)
             responseStr = responseStr.substring(0, 500);
