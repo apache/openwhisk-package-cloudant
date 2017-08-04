@@ -3,6 +3,7 @@ var request = require('request');
 var HttpStatus = require('http-status-codes');
 var constants = require('./constants.js');
 
+
 module.exports = function(
   logger,
   triggerDB,
@@ -12,7 +13,7 @@ module.exports = function(
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
-    this.worker = process.env.WORKER || "worker0";
+    this.worker = process.env.WORKER || 'worker0';
     this.host = process.env.HOST_INDEX || 'host0';
     this.hostMachine = process.env.HOST_MACHINE;
     this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
@@ -21,8 +22,9 @@ module.exports = function(
     this.redisKey = constants.REDIS_KEY;
 
     var retryAttempts = constants.RETRY_ATTEMPTS;
-    var ddname = constants.DESIGN_DOC_NAME;
-    var filter = constants.FILTER_FUNCTION;
+    var filterDDName = constants.FILTERS_DESIGN_DOC;
+    var viewDDName = constants.VIEWS_DESIGN_DOC;
+    var triggersByWorker = constants.TRIGGERS_BY_WORKER;
     var utils = this;
 
     // Add a trigger: listen for changes and dispatch.
@@ -102,12 +104,12 @@ module.exports = function(
             id: newTrigger.id,
             host: newTrigger.host,
             port: newTrigger.port,
-            protocol: newTrigger.protocol || "https",
+            protocol: newTrigger.protocol || 'https',
             dbname: newTrigger.dbname,
             user: newTrigger.user,
             pass: newTrigger.pass,
             apikey: newTrigger.apikey,
-            since: newTrigger.since || "now",
+            since: newTrigger.since || 'now',
             maxTriggers: maxTriggers,
             triggersLeft: maxTriggers,
             filter: newTrigger.filter,
@@ -193,7 +195,8 @@ module.exports = function(
                 utils.disableTrigger(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
                 logger.error(method, 'no more triggers left, disabled', dataTrigger.id);
             }
-        }).catch(err => {
+        })
+        .catch(err => {
             logger.error(method, err);
         });
     };
@@ -230,7 +233,8 @@ module.exports = function(
                                     utils.postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
-                                    }).catch(err => {
+                                    })
+                                    .catch(err => {
                                         reject(err);
                                     });
                                 }, timeout);
@@ -257,15 +261,17 @@ module.exports = function(
     this.initAllTriggers = function() {
         var method = 'initAllTriggers';
 
+        //follow the trigger DB
+        utils.setupFollow('now');
+
         logger.info(method, 'resetting system from last state');
-
-        triggerDB.changes({ since: 0, include_docs: true, filter: ddname + '/' + filter, worker: utils.worker }, (err, changes) => {
+        triggerDB.view(viewDDName, triggersByWorker, {reduce: false, include_docs: true, key: utils.worker}, function(err, body) {
             if (!err) {
-                changes.results.forEach(function (change) {
-                    var triggerIdentifier = change.id;
-                    var doc = change.doc;
+                body.rows.forEach(function (trigger) {
+                    var triggerIdentifier = trigger.id;
+                    var doc = trigger.doc;
 
-                    if (!doc.status || doc.status.active === true) {
+                    if ((!doc.status || doc.status.active === true) && !(triggerIdentifier in utils.triggers)) {
                         //check if trigger still exists in whisk db
                         var triggerObj = utils.parseQName(triggerIdentifier);
                         var host = 'https://' + utils.routerHost + ':' + 443;
@@ -290,8 +296,9 @@ module.exports = function(
                             else {
                                 utils.createTrigger(utils.initTrigger(doc))
                                 .then(triggerIdentifier => {
-                                    logger.info(method, 'Trigger was added.', triggerIdentifier);
-                                }).catch(err => {
+                                    logger.info(method, triggerIdentifier, 'created successfully');
+                                })
+                                .catch(err => {
                                     var message = 'Automatically disabled after receiving exception on init trigger: ' + err;
                                     utils.disableTrigger(triggerIdentifier, undefined, message);
                                     logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
@@ -299,11 +306,7 @@ module.exports = function(
                             }
                         });
                     }
-                    else {
-                        logger.info(method, 'ignoring trigger', triggerIdentifier, 'since it is disabled.');
-                    }
                 });
-                utils.setupFollow(changes.last_seq);
             } else {
                 logger.error(method, 'could not get latest state from database', err);
             }
@@ -317,7 +320,7 @@ module.exports = function(
             var feed = triggerDB.follow({
                 since: seq,
                 include_docs: true,
-                filter: ddname + '/' + filter,
+                filter: filterDDName + '/' + triggersByWorker,
                 query_params: {worker: utils.worker}
             });
 
@@ -338,7 +341,8 @@ module.exports = function(
                         utils.createTrigger(utils.initTrigger(doc))
                         .then(triggerIdentifier => {
                             logger.info(method, triggerIdentifier, 'created successfully');
-                        }).catch(err => {
+                        })
+                        .catch(err => {
                             var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
                             utils.disableTrigger(triggerIdentifier, undefined, message);
                             logger.error(method, 'Disabled trigger', triggerIdentifier, 'due to exception:', err);
@@ -425,14 +429,14 @@ module.exports = function(
                 var subscriber = redisClient.duplicate();
 
                 //create a subscriber client that listens for requests to perform swap
-                subscriber.on("message", function (channel, message) {
+                subscriber.on('message', function (channel, message) {
                     if (message === 'host0' || message === 'host1') {
-                        logger.info(method, message, "set to active host in channel", channel);
+                        logger.info(method, message, 'set to active host in channel', channel);
                         utils.activeHost = message;
                     }
                 });
 
-                subscriber.on("error", function (err) {
+                subscriber.on('error', function (err) {
                     logger.error(method, 'Error connecting to redis', err);
                     reject(err);
                 });
