@@ -206,6 +206,11 @@ module.exports = function(
 
         return new Promise(function(resolve, reject) {
 
+            // only manage trigger fires if they are not infinite
+            if (dataTrigger.maxTriggers !== -1) {
+                dataTrigger.triggersLeft--;
+            }
+
             request({
                 method: 'post',
                 uri: uri,
@@ -218,6 +223,10 @@ module.exports = function(
                 try {
                     logger.info(method, dataTrigger.id, 'http post request, STATUS:', response ? response.statusCode : response);
                     if (error || response.statusCode >= 400) {
+                        // only manage trigger fires if they are not infinite
+                        if (dataTrigger.maxTriggers !== -1) {
+                            dataTrigger.triggersLeft++;
+                        }
                         logger.error(method, 'there was an error invoking', dataTrigger.id, response ? response.statusCode : error);
                         if (!error && utils.shouldDisableTrigger(response.statusCode)) {
                             //disable trigger
@@ -243,10 +252,6 @@ module.exports = function(
                             }
                         }
                     } else {
-                        // only manage trigger fires if they are not infinite
-                        if (dataTrigger.maxTriggers !== -1) {
-                            dataTrigger.triggersLeft--;
-                        }
                         logger.info(method, 'fired', dataTrigger.id, dataTrigger.triggersLeft, 'triggers left');
                         resolve(dataTrigger.id);
                     }
