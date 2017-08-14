@@ -276,7 +276,7 @@ module.exports = function(
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
-                    if ((!doc.status || doc.status.active === true) && !(triggerIdentifier in utils.triggers)) {
+                    if (!(triggerIdentifier in utils.triggers)) {
                         //check if trigger still exists in whisk db
                         var triggerObj = utils.parseQName(triggerIdentifier);
                         var host = 'https://' + utils.routerHost + ':' + 443;
