@@ -20,17 +20,9 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
 
 1. Create a Cloudant service instance in your Bluemix [dashboard](http://console.ng.Bluemix.net).
 
-  Be sure to remember the name of the service instance and the Bluemix organization and space you're in.
+  Be sure to create a Credential key, after creating a new service instance.
 
-2. Make sure your OpenWhisk CLI is in the namespace corresponding to the Bluemix organization and space that you used in the previous step.
-
-  ```
-  wsk property set --namespace myBluemixOrg_myBluemixSpace
-  ```
-
-  Alternatively, you can use `wsk property set --namespace` to set a namespace from a list of those accessible to you.
-
-3. Refresh the packages in your namespace. The refresh automatically creates a package binding for the Cloudant service instance that you created.
+2. Refresh the packages in your namespace. The refresh automatically creates a package binding for each Cloudant service instance that has a credential key defined.
 
   ```
   wsk package refresh
@@ -48,9 +40,9 @@ If you're using OpenWhisk from Bluemix, OpenWhisk automatically creates package 
   /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1 private binding
   ```
 
-  You see the fully qualified name of the package binding that corresponds to your Bluemix Cloudant service instance.
+  Your package binding now contains the credentials associated with your Cloudant service instance.
 
-4. Check to see that the package binding that was created previously is configured with your Cloudant Bluemix service instance host and credentials.
+3. Check to see that the package binding that was created previously is configured with your Cloudant Bluemix service instance host and credentials.
 
   ```
   wsk package get /myBluemixOrg_myBluemixSpace/Bluemix_testCloudant_Credentials-1 parameters
