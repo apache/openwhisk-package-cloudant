@@ -16,6 +16,8 @@
  */
 package system.health
 
+import java.time.{Clock, Instant}
+
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
@@ -66,6 +68,7 @@ class CloudantHealthFeedTests
                 }
 
                 // create whisk stuff
+                println(s"Creating trigger: $triggerName")
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -76,16 +79,18 @@ class CloudantHealthFeedTests
                 }
                 feedCreationResult.stdout should include("ok")
 
-                // Feed is not actually alive yet - see issue #1954
-                Thread.sleep(5000)
+                val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+                activationsBeforeChange should be(0)
 
                 // create a test doc in the sample db
-                println("create a test doc and wait for trigger")
                 CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc1\"}")
+                val now = Instant.now(Clock.systemUTC())
+                println(s"created a test doc at $now")
 
                 // get activation list of the trigger, expecting exactly 1
                 val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
-                println(s"Found activation size (should be exactly 1): $activations")
+                val nowPoll = Instant.now(Clock.systemUTC())
+                println(s"Found activation size ($nowPoll): $activations")
                 withClue("Change feed trigger count: ") { activations should be(1) }
 
                 // delete the whisk trigger, which must also delete the feed
@@ -126,7 +131,7 @@ class CloudantHealthFeedTests
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
-                println("Creating cloudant trigger feed.")
+                println(s"Creating trigger: $triggerName")
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -169,7 +174,7 @@ class CloudantHealthFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
-                println("Creating cloudant trigger feed.")
+                println(s"Creating trigger: $triggerName")
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(

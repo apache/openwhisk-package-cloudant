@@ -193,7 +193,7 @@ module.exports = function(
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
             if (dataTrigger.triggersLeft === 0) {
                 utils.disableTrigger(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
-                logger.error(method, 'no more triggers left, disabled', dataTrigger.id);
+                logger.warn(method, 'no more triggers left, disabled', dataTrigger.id);
             }
         })
         .catch(err => {
