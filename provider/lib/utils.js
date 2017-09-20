@@ -127,36 +127,33 @@ module.exports = function(
     this.disableTrigger = function(id, statusCode, message) {
         var method = 'disableTrigger';
 
-        //only active/master provider should update the database
-        if (utils.activeHost === utils.host) {
-            triggerDB.get(id, function (err, existing) {
-                if (!err) {
-                    if (!existing.status || existing.status.active === true) {
-                        var updatedTrigger = existing;
-                        var status = {
-                            'active': false,
-                            'dateChanged': new Date().toISOString(),
-                            'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
-                        };
-                        updatedTrigger.status = status;
+        triggerDB.get(id, function (err, existing) {
+            if (!err) {
+                if (!existing.status || existing.status.active === true) {
+                    var updatedTrigger = existing;
+                    var status = {
+                        'active': false,
+                        'dateChanged': new Date().toISOString(),
+                        'reason': {'kind': 'AUTO', 'statusCode': statusCode, 'message': message}
+                    };
+                    updatedTrigger.status = status;
 
-                        triggerDB.insert(updatedTrigger, id, function (err) {
-                            if (err) {
-                                logger.error(method, 'there was an error while disabling', id, 'in database. ' + err);
-                            }
-                            else {
-                                logger.info(method, 'trigger', id, 'successfully disabled in database');
-                            }
-                        });
-                    }
+                    triggerDB.insert(updatedTrigger, id, function (err) {
+                        if (err) {
+                            logger.error(method, 'there was an error while disabling', id, 'in database. ' + err);
+                        }
+                        else {
+                            logger.info(method, 'trigger', id, 'successfully disabled in database');
+                        }
+                    });
                 }
-                else {
-                    logger.info(method, 'could not find', id, 'in database');
-                    //make sure it is removed from memory as well
-                    utils.deleteTrigger(id);
-                }
-            });
-        }
+            }
+            else {
+                logger.info(method, 'could not find', id, 'in database');
+                //make sure it is removed from memory as well
+                utils.deleteTrigger(id);
+            }
+        });
     };
 
     // Delete a trigger: stop listening for changes and remove it.

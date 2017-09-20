@@ -4,7 +4,7 @@
 # automatically
 #
 # To run this command
-# ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost>
+# ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost> <workers>
 
 set -e
 set -x
@@ -14,7 +14,7 @@ WSK_CLI="$OPENWHISK_HOME/bin/wsk"
 
 if [ $# -eq 0 ]
 then
-echo "Usage: ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost>"
+echo "Usage: ./installCatalog.sh <authkey> <edgehost> <dburl> <dbprefix> <apihost> <workers>"
 fi
 
 AUTH="$1"
@@ -22,6 +22,7 @@ EDGEHOST="$2"
 DB_URL="$3"
 DB_NAME="${4}cloudanttrigger"
 APIHOST="$5"
+WORKERS="$6"
 
 # If the auth key file exists, read the key in the file. Otherwise, take the
 # first argument as the key itself.
@@ -57,10 +58,19 @@ $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH"  --shared yes cl
     -p dbname '' \
     -p apihost "$APIHOST"
 
-$WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared no cloudantWeb \
-     -p DB_URL "$DB_URL" \
-     -p DB_NAME "$DB_NAME" \
-     -p apihost "$APIHOST"
+if [ -n "$WORKERS" ];
+then
+    $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared no cloudantWeb \
+        -p DB_URL "$DB_URL" \
+        -p DB_NAME "$DB_NAME" \
+        -p apihost "$APIHOST" \
+        -p workers "$WORKERS"
+else
+    $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared no cloudantWeb \
+        -p DB_URL "$DB_URL" \
+        -p DB_NAME "$DB_NAME" \
+        -p apihost "$APIHOST"
+fi
 
 # Cloudant feed action
 

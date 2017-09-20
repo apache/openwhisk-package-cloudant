@@ -88,7 +88,7 @@ class CloudantHealthFeedTests
                 println(s"created a test doc at $now")
 
                 // get activation list of the trigger, expecting exactly 1
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
                 val nowPoll = Instant.now(Clock.systemUTC())
                 println(s"Found activation size ($nowPoll): $activations")
                 withClue("Change feed trigger count: ") { activations should be(1) }
