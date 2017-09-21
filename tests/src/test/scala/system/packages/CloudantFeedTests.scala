@@ -235,7 +235,7 @@ class CloudantFeedTests
                 response1.get("ok").getAsString() should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 
@@ -244,7 +244,7 @@ class CloudantFeedTests
                 response2.get("ok").getAsString() should be("true")
 
                 println("No activations should be created for test_doc_2 since trigger is disabled")
-                val newactivations = wsk.activation.pollFor(N = 2, Some(triggerName), retries = 5).length
+                val newactivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
                 println(s"Activation size should still be one: $newactivations")
                 newactivations should be(1)
 
@@ -296,7 +296,7 @@ class CloudantFeedTests
                 response1.get("ok").getAsString() should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 
@@ -314,7 +314,7 @@ class CloudantFeedTests
                 response3.get("ok").getAsString() should be("true")
 
                 println("Checking for new activations (should now have 2)")
-                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName)).length
+                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length
                 println(s"Found activation size (should be 2): $newActivations")
                 newActivations should be(2)
 

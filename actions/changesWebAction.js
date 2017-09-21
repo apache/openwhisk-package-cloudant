@@ -75,6 +75,9 @@ function main(params) {
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, false)
             .then(() => {
+                return verifyUserDB(newTrigger);
+            })
+            .then(() => {
                 return getWorkerID(db, workers);
             })
             .then((worker) => {

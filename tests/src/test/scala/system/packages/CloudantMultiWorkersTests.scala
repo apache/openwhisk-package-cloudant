@@ -19,6 +19,7 @@ package system.packages
 import com.jayway.restassured.RestAssured
 import com.jayway.restassured.config.SSLConfig
 import com.jayway.restassured.http.ContentType
+import common.TestUtils.DONTCARE_EXIT
 import common._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
@@ -51,43 +52,43 @@ class CloudantMultiWorkersTests extends FlatSpec
 
     behavior of "Cloudant multi workers feed tests"
 
-    it should "create triggers assigned to worker0 and worker1" in withAssetCleaner(WskProps()) {
+    it should "create triggers assigned to worker10 and worker11" in withAssetCleaner(WskProps()) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
 
-            val worker0Trigger = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val worker0Params = JsObject(
-                "triggerName" -> JsString(worker0Trigger),
+            val worker10Trigger = s"worker10CloudantTrigger-${System.currentTimeMillis}"
+            val worker10Params = JsObject(
+                "triggerName" -> JsString(worker10Trigger),
                 "authKey" -> JsString(s"$user:$password"),
                 "username" -> myCloudantCreds.user.toJson,
                 "password" -> myCloudantCreds.password.toJson,
                 "host" -> myCloudantCreds.host().toJson,
                 "dbname" -> myCloudantCreds.dbname.toJson,
-                "workers" -> JsArray(JsString("worker0")))
+                "workers" -> JsArray(JsString("worker10")))
 
-            val worker1Trigger = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val worker1Params = JsObject(
-                "triggerName" -> JsString(worker1Trigger),
+            val worker11Trigger = s"worker11CloudantTrigger-${System.currentTimeMillis}"
+            val worker11Params = JsObject(
+                "triggerName" -> JsString(worker11Trigger),
                 "authKey" -> JsString(s"$user:$password"),
                 "username" -> myCloudantCreds.user.toJson,
                 "password" -> myCloudantCreds.password.toJson,
                 "host" -> myCloudantCreds.host().toJson,
                 "dbname" -> myCloudantCreds.dbname.toJson,
-                "workers" -> JsArray(JsString("worker0"), JsString("worker1")))
+                "workers" -> JsArray(JsString("worker10"), JsString("worker11")))
 
             try {
                 CloudantUtil.setUp(myCloudantCreds)
 
-                wsk.trigger.create(worker0Trigger)
+                wsk.trigger.create(worker10Trigger)
 
-                //create trigger feed and assign to worker0
-                makePutCallWithExpectedResult(worker0Params, 200)
+                //create trigger feed and assign to worker10
+                makePutCallWithExpectedResult(worker10Params, 200)
 
-                wsk.trigger.create(worker1Trigger)
+                wsk.trigger.create(worker11Trigger)
 
-                //create trigger feed and assign to worker0 or worker1
+                //create trigger feed and assign to worker10 or worker11
                 //the one with the least assigned triggers will be chosen
-                makePutCallWithExpectedResult(worker1Params, 200)
+                makePutCallWithExpectedResult(worker11Params, 200)
 
                 val dbName = s"${dbPrefix}cloudanttrigger"
                 val documents = getAllDocs(dbName)
@@ -95,16 +96,16 @@ class CloudantMultiWorkersTests extends FlatSpec
                 val worker1Doc = documents
                         .fields("rows")
                         .convertTo[List[JsObject]]
-                        .filter(_.fields("id").convertTo[String].equals(s":_:$worker1Trigger"))
+                        .filter(_.fields("id").convertTo[String].equals(s":_:$worker11Trigger"))
 
-                JsHelpers.getFieldPath(worker1Doc(0), "doc", "worker") shouldBe Some(JsString("worker1"))
+                JsHelpers.getFieldPath(worker1Doc(0), "doc", "worker") shouldBe Some(JsString("worker11"))
             } finally {
-                //delete triggers
-                wsk.trigger.delete(worker0Trigger)
-                wsk.trigger.delete(worker1Trigger)
+                //delete trigger feeds and triggers
+                makeDeleteCallWithExpectedResult(worker10Params, DONTCARE_EXIT)
+                makeDeleteCallWithExpectedResult(worker11Params, DONTCARE_EXIT)
 
-                makeDeleteCallWithExpectedResult(worker0Params, 200)
-                makeDeleteCallWithExpectedResult(worker1Params, 200)
+                wsk.trigger.delete(worker10Trigger, expectedExitCode = DONTCARE_EXIT)
+                wsk.trigger.delete(worker11Trigger, expectedExitCode = DONTCARE_EXIT)
 
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
@@ -125,7 +126,7 @@ class CloudantMultiWorkersTests extends FlatSpec
                 .config(RestAssured.config().sslConfig(new SSLConfig().relaxedHTTPSValidation()))
                 .body(params.toString())
                 .delete(webActionURL)
-        assert(response.statusCode() == expectedCode)
+        assert(expectedCode == DONTCARE_EXIT || response.statusCode() == expectedCode)
     }
 
 
