@@ -19,7 +19,7 @@ package system.health
 import java.time.{Clock, Instant}
 
 import org.junit.runner.RunWith
-import org.scalatest.FlatSpec
+import org.scalatest.{BeforeAndAfterEach, FlatSpec}
 import org.scalatest.junit.JUnitRunner
 import common.TestHelpers
 import common.Wsk
@@ -39,7 +39,8 @@ class CloudantHealthFeedTests
     extends FlatSpec
     with TestHelpers
     with WskTestHelpers
-    with WskActorSystem {
+    with WskActorSystem
+    with BeforeAndAfterEach {
 
     val wskprops = WskProps()
     val wsk = new Wsk
@@ -47,153 +48,147 @@ class CloudantHealthFeedTests
 
     behavior of "Cloudant Health trigger service"
 
-    it should "bind cloudant package and fire changes trigger using changes feed" in withAssetCleaner(wskprops) {
-        (wp, assetHelper) =>
-            implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
-            val feed = "changes"
-
-            try {
-                CloudantUtil.setUp(myCloudantCreds)
-
-                // the package cloudant should be there
-                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-                println("fetched package cloudant")
-                packageGetResult.stdout should include("ok")
-
-                // create package binding
-                assetHelper.withCleaner(wsk.pkg, packageName) {
-                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-                }
-
-                // create whisk stuff
-                println(s"Creating trigger: $triggerName")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-                    (trigger, name) =>
-                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                            "username" -> myCloudantCreds.user.toJson,
-                            "password" -> myCloudantCreds.password.toJson,
-                            "host" -> myCloudantCreds.host().toJson,
-                            "dbname" -> myCloudantCreds.dbname.toJson))
-                }
-                feedCreationResult.stdout should include("ok")
-
-                val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
-                activationsBeforeChange should be(0)
-
-                // create a test doc in the sample db
-                CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc1\"}")
-                val now = Instant.now(Clock.systemUTC())
-                println(s"created a test doc at $now")
-
-                // get activation list of the trigger, expecting exactly 1
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
-                val nowPoll = Instant.now(Clock.systemUTC())
-                println(s"Found activation size ($nowPoll): $activations")
-                withClue("Change feed trigger count: ") { activations should be(1) }
-
-                // delete the whisk trigger, which must also delete the feed
-                wsk.trigger.delete(triggerName)
-
-                // recreate the trigger now without the feed
-                wsk.trigger.create(triggerName)
-
-                // create a test doc in the sample db, this should not fire the trigger
-                println("create another test doc")
-                CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc2\"}")
-
-                println("checking for new triggers (no new ones expected)")
-                val activationsAfterDelete = wsk.activation.pollFor(N = 2, Some(triggerName)).length
-                println(s"Found activation size after delete: $activationsAfterDelete")
-                activationsAfterDelete should be(1)
-            } finally {
-                CloudantUtil.unsetUp(myCloudantCreds)
-            }
+    override def beforeEach() = {
+        CloudantUtil.setUp(myCloudantCreds)
+        CloudantUtil.createDocument(myCloudantCreds, "{\"_id\":\"testid\"}")
     }
 
-    it should "should not fail when specifying triggers above 1 Million" in withAssetCleaner(wskprops) {
-        (wp, assetHelper) =>
-            implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
-            val feed = "changes"
-
-            try {
-                CloudantUtil.setUp(myCloudantCreds)
-
-                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-                println("Fetching cloudant package.")
-                packageGetResult.stdout should include("ok")
-
-                println("Creating cloudant package binding.")
-                assetHelper.withCleaner(wsk.pkg, packageName) {
-                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-                }
-
-                println(s"Creating trigger: $triggerName")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
-                    (trigger, name) =>
-                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                            "username" -> myCloudantCreds.user.toJson,
-                            "password" -> myCloudantCreds.password.toJson,
-                            "host" -> myCloudantCreds.host().toJson,
-                            "dbname" -> myCloudantCreds.dbname.toJson,
-                            "maxTriggers" -> 100000000.toJson))
-                }
-                feedCreationResult.stdout should include("ok")
-
-                // delete the whisk trigger, which will also delete the feed
-                wsk.trigger.delete(triggerName)
-
-            } finally {
-                CloudantUtil.unsetUp(myCloudantCreds)
-            }
+    override def afterEach() = {
+        // wait 10 seconds to give the cloudant provider a chance to clean
+        // up trigger feeds before deleting the database
+        Thread.sleep(10 * 1000)
+        CloudantUtil.unsetUp(myCloudantCreds)
     }
 
-
-
-    it should "not deny trigger creation when choosing maxTrigger count set to infinity (-1)" in withAssetCleaner(wskprops) {
-
+    it should "fire changes when a document is created" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
-            try {
+            // the package cloudant should be there
+            val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+            println("fetched package cloudant")
+            packageGetResult.stdout should include("ok")
 
-                CloudantUtil.setUp(myCloudantCreds)
-
-                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-                println("Fetching cloudant package.")
-                packageGetResult.stdout should include("ok")
-
-                println("Creating cloudant package binding.")
-                assetHelper.withCleaner(wsk.pkg, packageName) {
+            // create package binding
+            assetHelper.withCleaner(wsk.pkg, packageName) {
                 (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-                }
+            }
 
-                println(s"Creating trigger: $triggerName")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+            // create whisk stuff
+            println(s"Creating trigger: $triggerName")
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "username" -> myCloudantCreds.user.toJson,
+                        "password" -> myCloudantCreds.password.toJson,
+                        "host" -> myCloudantCreds.host().toJson,
+                        "dbname" -> myCloudantCreds.dbname.toJson))
+            }
+            feedCreationResult.stdout should include("ok")
+
+            val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+            activationsBeforeChange should be(0)
+
+            // create a test doc in the sample db
+            CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc1\"}")
+            val now = Instant.now(Clock.systemUTC())
+            println(s"created a test doc at $now")
+
+            // get activation list of the trigger, expecting exactly 1
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            val nowPoll = Instant.now(Clock.systemUTC())
+            println(s"Found activation size ($nowPoll): $activations")
+            withClue("Change feed trigger count: ") { activations should be(1) }
+
+            // delete the whisk trigger, which must also delete the feed
+            wsk.trigger.delete(triggerName)
+
+            // recreate the trigger now without the feed
+            wsk.trigger.create(triggerName)
+
+            // create a test doc in the sample db, this should not fire the trigger
+            println("create another test doc")
+            CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc2\"}")
+
+            println("checking for new triggers (no new ones expected)")
+            val activationsAfterDelete = wsk.activation.pollFor(N = 2, Some(triggerName)).length
+            println(s"Found activation size after delete: $activationsAfterDelete")
+            activationsAfterDelete should be(1)
+    }
+
+    it should "fire changes since sequence 0 of DB" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+            println("Fetching cloudant package.")
+            packageGetResult.stdout should include("ok")
+
+            println("Creating cloudant package binding.")
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+            }
+
+            println(s"Creating trigger: $triggerName")
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
                         "password" -> myCloudantCreds.password.toJson,
                         "host" -> myCloudantCreds.host().toJson,
                         "dbname" -> myCloudantCreds.dbname.toJson,
-                        "maxTriggers" -> -1.toJson),
-                        expectedExitCode = 0)
-                }
-                feedCreationResult.stderr should not include("error")
+                        "maxTriggers" -> 100000000.toJson,
+                        "since" -> "0".toJson))
+            }
+            feedCreationResult.stdout should include("ok")
 
-                // delete the whisk trigger, which will also delete the feed
-                wsk.trigger.delete(triggerName)
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            activations should be(1)
+    }
 
-            } finally {
-                CloudantUtil.unsetUp(myCloudantCreds)
+    it should "fire changes when a document is deleted" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+            println("Fetching cloudant package.")
+            packageGetResult.stdout should include("ok")
+
+            println("Creating cloudant package binding.")
+            assetHelper.withCleaner(wsk.pkg, packageName) {
+                (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
             }
 
+            println(s"Creating trigger: $triggerName")
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+                (trigger, name) =>
+                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                        "username" -> myCloudantCreds.user.toJson,
+                        "password" -> myCloudantCreds.password.toJson,
+                        "host" -> myCloudantCreds.host().toJson,
+                        "dbname" -> myCloudantCreds.dbname.toJson,
+                        "maxTriggers" -> (-1).toJson))
+            }
+            feedCreationResult.stdout should include("ok")
+
+            val activationsBeforeDelete = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+            activationsBeforeDelete should be(0)
+
+            // delete a test doc in the sample db and verify trigger is fired
+            println("delete a test doc")
+            CloudantUtil.deleteDocument(myCloudantCreds, CloudantUtil.getDocument(myCloudantCreds, "testid"))
+
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            activations should be(1)
     }
 
 }

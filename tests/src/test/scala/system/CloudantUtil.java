@@ -233,12 +233,24 @@ public class CloudantUtil {
      *
      * @throws UnsupportedEncodingException
      */
-    public static JsonObject deleteDocument(Credential credential, String docId) throws UnsupportedEncodingException {
-        // use GET to get the document
-        Response response = given().port(443).baseUri(cloudantAccount(credential.user)).auth().basic(credential.user, credential.password).delete("/" + credential.dbname + "/" + docId);
-        System.out.format("Response of delete document in database %s: %s\n", credential.dbname, response.asString());
-        assertTrue("failed to delete document in database " + credential.dbname, response.statusCode() == 200 || response.statusCode() == 202);
-        return (JsonObject) new JsonParser().parse(response.asString());
+    public static JsonObject deleteDocument(Credential credential, JsonObject jsonObj) throws UnsupportedEncodingException {
+        CloudantClient client = new CloudantClient(credential.user, credential.user, credential.password);
+        Database db = client.database(credential.dbname, false);
+        com.cloudant.client.api.model.Response res = null;
+        try {
+            res = db.remove(jsonObj);
+        }
+        catch(Exception e) {
+            System.out.format("Exception thrown during document delete: %s", e.toString());
+        }
+        finally {
+            client.shutdown();
+        }
+
+        JsonObject ret = new JsonObject();
+        ret.addProperty("id", res.getId());
+        ret.addProperty("rev", res.getRev());
+        return ret;
     }
 
     /**
