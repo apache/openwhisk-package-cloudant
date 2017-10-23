@@ -98,6 +98,41 @@ function main(params) {
         });
 
     }
+    else if (params.__ow_method === "get") {
+        return new Promise(function (resolve, reject) {
+            verifyTriggerAuth(triggerURL, params.authKey, false)
+            .then(() => {
+                return getTrigger(db, triggerID);
+            })
+            .then(doc => {
+                var body = {
+                    config: {
+                        name: doc.id.split(':')[2],
+                        namespace: doc.id.split(':')[1],
+                        host: doc.host,
+                        port: doc.port,
+                        protocol: doc.protocol,
+                        dbname: doc.dbname,
+                        username: doc.user,
+                        password: doc.pass,
+                        since: doc.since,
+                        maxTriggers: doc.maxTriggers,
+                        filter: doc.filter,
+                        query_params: doc.query_params,
+                    },
+                    status: doc.status
+                };
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify(body)).toString('base64')
+                });
+            })
+            .catch(err => {
+                reject(err);
+            });
+        });
+    }
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
@@ -173,6 +208,20 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
             }
             else {
                 reject(sendError(err.statusCode, 'error creating cloudant trigger.', err.message));
+            }
+        });
+    });
+}
+
+function getTrigger(triggerDB, triggerID) {
+    
+    return new Promise(function(resolve, reject) {
+
+        triggerDB.get(triggerID, function (err, existing) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(existing);
             }
         });
     });
