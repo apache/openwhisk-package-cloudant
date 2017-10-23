@@ -214,7 +214,7 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
 }
 
 function getTrigger(triggerDB, triggerID) {
-    
+
     return new Promise(function(resolve, reject) {
 
         triggerDB.get(triggerID, function (err, existing) {
