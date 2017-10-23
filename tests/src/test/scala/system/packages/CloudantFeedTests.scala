@@ -432,7 +432,7 @@ class CloudantFeedTests
 
                 // create package binding
                 assetHelper.withCleaner(wsk.pkg, packageName) {
-                  (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
                 val username = myCloudantCreds.user
@@ -444,10 +444,10 @@ class CloudantFeedTests
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                          "username" -> username.toJson,
-                          "password" -> password.toJson,
-                          "host" -> host.toJson,
-                          "dbname" -> dbName.toJson
+                            "username" -> username.toJson,
+                            "password" -> password.toJson,
+                            "host" -> host.toJson,
+                            "dbname" -> dbName.toJson
                         ))
                 }
                 feedCreationResult.stdout should include("ok")
