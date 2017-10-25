@@ -68,7 +68,7 @@ function main(params) {
             query_params: query_params,
             status: {
                 'active': true,
-                'dateChanged': new Date().toISOString()
+                'dateChanged': Date.now()
             }
         };
 
