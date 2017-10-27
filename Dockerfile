@@ -11,7 +11,8 @@ RUN apt-get update --fix-missing && \
   apt-get update && \
   apt-get remove -y nodejs && \
   curl -sL https://deb.nodesource.com/setup_6.x | bash - && \
-  apt-get install -y nodejs
+  apt-get install -y nodejs && \
+  apt-get install git -y
 
 # only package.json
 ADD package.json /cloudantTrigger/
