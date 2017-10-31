@@ -1,4 +1,5 @@
 var request = require('request');
+var moment = require('moment');
 
 function main(params) {
 
@@ -68,7 +69,7 @@ function main(params) {
             query_params: query_params,
             status: {
                 'active': true,
-                'dateChanged': new Date().toISOString()
+                'dateChanged': Date.now()
             }
         };
 
@@ -97,6 +98,45 @@ function main(params) {
             });
         });
 
+    }
+    else if (params.__ow_method === "get") {
+        return new Promise(function (resolve, reject) {
+            verifyTriggerAuth(triggerURL, params.authKey, false)
+            .then(() => {
+                return getTrigger(db, triggerID);
+            })
+            .then(doc => {
+                var body = {
+                    config: {
+                        name: doc.id.split(':')[2],
+                        namespace: doc.id.split(':')[1],
+                        host: doc.host,
+                        port: doc.port,
+                        protocol: doc.protocol,
+                        dbname: doc.dbname,
+                        username: doc.user,
+                        password: doc.pass,
+                        since: doc.since,
+                        filter: doc.filter,
+                        query_params: doc.query_params,
+                    },
+                    status: {
+                        active: doc.status.active,
+                        dateChanged: moment(doc.status.dateChanged).utc().valueOf(),
+                        dateChangedISO: moment(doc.status.dateChanged).utc().format(),
+                        reason: doc.status.reason
+                    }
+                };
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify(body)).toString('base64')
+                });
+            })
+            .catch(err => {
+                reject(err);
+            });
+        });
     }
     else if (params.__ow_method === "delete") {
 
@@ -173,6 +213,20 @@ function createTrigger(triggerDB, triggerID, newTrigger) {
             }
             else {
                 reject(sendError(err.statusCode, 'error creating cloudant trigger.', err.message));
+            }
+        });
+    });
+}
+
+function getTrigger(triggerDB, triggerID) {
+
+    return new Promise(function(resolve, reject) {
+
+        triggerDB.get(triggerID, function (err, existing) {
+            if (err) {
+                reject(err);
+            } else {
+                resolve(existing);
             }
         });
     });
