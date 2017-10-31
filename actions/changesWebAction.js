@@ -1,4 +1,5 @@
 var request = require('request');
+var moment = require('moment');
 
 function main(params) {
 
@@ -116,11 +117,15 @@ function main(params) {
                         username: doc.user,
                         password: doc.pass,
                         since: doc.since,
-                        maxTriggers: doc.maxTriggers,
                         filter: doc.filter,
                         query_params: doc.query_params,
                     },
-                    status: doc.status
+                    status: {
+                        active: doc.status.active,
+                        dateChanged: moment(doc.status.dateChanged).utc().valueOf(),
+                        dateChangedISO: moment(doc.status.dateChanged).utc().format(),
+                        reason: doc.status.reason
+                    }
                 };
                 resolve({
                     statusCode: 200,

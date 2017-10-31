@@ -396,7 +396,6 @@ class CloudantFeedTests
                                 config should contain("dbname" -> dbName.toJson)
                                 config should contain("filter" -> filter.toJson)
                                 config should contain("query_params" -> queryParams)
-                                config should contain("maxTriggers" -> (-1).toJson)
                                 config should contain("protocol" -> protocol.toJson)
                                 config should contain("port" -> port.toJson)
                                 config should contain("since" -> since.toJson)
@@ -404,6 +403,7 @@ class CloudantFeedTests
 
                                 status should contain("active" -> true.toJson)
                                 status should contain key "dateChanged"
+                                status should contain key "dateChangedISO"
                                 status should not(contain key "reason")
                         }
                 }
