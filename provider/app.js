@@ -47,7 +47,7 @@ function createDatabase() {
     var method = 'createDatabase';
     logger.info(method, 'creating the trigger database');
 
-    var nano = require('nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
+    var nano = require('cloudant-nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
 
     if (nano !== null) {
         return new Promise(function (resolve, reject) {
