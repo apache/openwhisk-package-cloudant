@@ -40,7 +40,7 @@ module.exports = function(
         }
 
         try {
-            var nanoConnection = require('nano')(dbURL);
+            var nanoConnection = require('cloudant-nano')(dbURL);
             var triggeredDB = nanoConnection.use(dataTrigger.dbname);
 
             // Listen for changes on this database.
