@@ -30,12 +30,21 @@ function requestHelper(url, input, method) {
 
     return new Promise(function(resolve, reject) {
 
-        request({
+        var options = {
             method : method,
             url : url,
-            json: input,
             rejectUnauthorized: false
-        }, function(error, response, body) {
+        };
+
+        if (method === 'get') {
+            options.qs = input;
+            options.json = true;
+        } else {
+            options.json = true;
+            options.body = input;
+        }
+        
+        request(options, function(error, response, body) {
 
             if (!error && response.statusCode === 200) {
                 resolve(body);
