@@ -33,14 +33,13 @@ function requestHelper(url, input, method) {
         var options = {
             method : method,
             url : url,
+            json: true,
             rejectUnauthorized: false
         };
 
         if (method === 'get') {
             options.qs = input;
-            options.json = true;
         } else {
-            options.json = true;
             options.body = input;
         }
         
