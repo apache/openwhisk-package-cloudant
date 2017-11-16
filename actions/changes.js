@@ -42,7 +42,7 @@ function requestHelper(url, input, method) {
         } else {
             options.body = input;
         }
-        
+
         request(options, function(error, response, body) {
 
             if (!error && response.statusCode === 200) {
