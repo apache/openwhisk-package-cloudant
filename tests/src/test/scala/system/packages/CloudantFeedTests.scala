@@ -324,7 +324,7 @@ class CloudantFeedTests
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
     }
-    
+
     it should "not return fields in configuration that are not passed in during trigger create" in withAssetCleaner(wskprops) {
         val currentTime = s"${System.currentTimeMillis}"
 

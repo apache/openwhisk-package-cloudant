@@ -350,7 +350,7 @@ function deleteTrigger(triggerDB, triggerID, retryCount) {
 }
 
 function updateTrigger(triggerDB, triggerID, updatedTrigger) {
-    
+
     return new Promise(function(resolve, reject) {
         var message = 'Automatically disabled trigger while updating';
         var status = {
