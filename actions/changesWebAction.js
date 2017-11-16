@@ -19,7 +19,7 @@ function main(params) {
     var db = nano.db.use(params.DB_NAME);
     var workers = params.workers instanceof Array ? params.workers : [];
 
-    if (params.__ow_method === "put") {
+    if (params.__ow_method === "post") {
 
         // check for parameter errors
         if (!params.dbname) {
@@ -138,12 +138,58 @@ function main(params) {
             });
         });
     }
+    else if (params.__ow_method === "put") {
+        return new Promise(function (resolve, reject) {
+            verifyTriggerAuth(triggerURL, params.authKey, true)
+            .then(() => {
+                return getTrigger(db, triggerID);
+            })
+            .then(trigger => {
+                if (params.filter || params.query_params) {
+                    var updatedTrigger = trigger;
+                    if (params.filter) {
+                        updatedTrigger.filter = params.filter;
+                    }
+                    if (params.query_params) {
+                        if (updatedTrigger.filter) {
+                            if (typeof params.query_params === 'object') {
+                                updatedTrigger.query_params = params.query_params;
+                            }
+                            else if (typeof params.query_params === 'string') {
+                                try {
+                                    updatedTrigger.query_params = JSON.parse(params.query_params);
+                                }
+                                catch (e) {
+                                    reject(sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.'));
+                                }
+                            }
+                        } else {
+                            reject(sendError(400, 'The query_params parameter is only allowed if the filter parameter is defined'));
+                        }
+                    }
+                    return updateTrigger(db, triggerID, updatedTrigger);
+                } else {
+                    reject(sendError(400, 'At least one of filter or query_params parameters must be supplied'));
+                }
+            })
+            .then(() => {
+                resolve({
+                    statusCode: 200,
+                    headers: {'Content-Type': 'application/json'},
+                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
+                });
+           })
+           .catch(err => {
+               reject(err);
+           });
+        });
+    }
     else if (params.__ow_method === "delete") {
 
         return new Promise(function (resolve, reject) {
             verifyTriggerAuth(triggerURL, params.authKey, true)
             .then(() => {
-                return updateTrigger(db, triggerID, 0);
+                return disableTrigger(db, triggerID, 0);
             })
             .then(() => {
                 return deleteTrigger(db, triggerID, 0);
@@ -161,7 +207,7 @@ function main(params) {
         });
     }
     else {
-        return sendError(400, 'lifecycleEvent must be CREATE or DELETE');
+        return sendError(400, 'unsupported lifecycle event');
     }
 }
 
@@ -232,7 +278,7 @@ function getTrigger(triggerDB, triggerID) {
     });
 }
 
-function updateTrigger(triggerDB, triggerID, retryCount) {
+function disableTrigger(triggerDB, triggerID, retryCount) {
 
     return new Promise(function(resolve, reject) {
 
@@ -245,7 +291,7 @@ function updateTrigger(triggerDB, triggerID, retryCount) {
                     if (err) {
                         if (err.statusCode === 409 && retryCount < 5) {
                             setTimeout(function () {
-                                updateTrigger(triggerDB, triggerID, (retryCount + 1))
+                                disableTrigger(triggerDB, triggerID, (retryCount + 1))
                                 .then(() => {
                                     resolve();
                                 })
@@ -299,6 +345,48 @@ function deleteTrigger(triggerDB, triggerID, retryCount) {
             else {
                 reject(sendError(err.statusCode, 'could not find the trigger in the database'));
             }
+        });
+    });
+}
+
+function updateTrigger(triggerDB, triggerID, updatedTrigger) {
+    
+    return new Promise(function(resolve, reject) {
+        var message = 'Automatically disabled trigger while updating';
+        var status = {
+            'active': false,
+            'dateChanged': Date.now(),
+            'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': message}
+        };
+        updatedTrigger.status = status;
+        triggerDB.insert(updatedTrigger, triggerID, function (err) {
+            if (err) {
+                reject(sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+            }
+            else {
+                resolve();
+            }
+        });
+    })
+    .then(() => {
+        return getTrigger(triggerDB, triggerID);
+    })
+    .then(trigger => {
+        var status = {
+            'active': true,
+            'dateChanged': Date.now()
+        };
+        trigger.status = status;
+
+        return new Promise(function(resolve, reject) {
+            triggerDB.insert(trigger, triggerID, function (err) {
+                if (err) {
+                    reject(sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+                }
+                else {
+                    resolve();
+                }
+            });
         });
     });
 }
