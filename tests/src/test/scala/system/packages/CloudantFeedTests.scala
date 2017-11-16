@@ -21,7 +21,7 @@ import common._
 import org.junit.runner.RunWith
 import org.scalatest.{FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat, BooleanJsonFormat}
+import spray.json.DefaultJsonProtocol.{IntJsonFormat, StringJsonFormat}
 import spray.json.{JsObject, JsString, pimpAny}
 import system.CloudantUtil
 
@@ -323,94 +323,6 @@ class CloudantFeedTests
             finally {
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
-    }
-
-    it should "return correct status and configuration" in withAssetCleaner(wskprops) {
-        val currentTime = s"${System.currentTimeMillis}"
-
-        (wp, assetHelper) =>
-            implicit val wskProps = wp
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
-            val feed = "changes"
-
-            try {
-                CloudantUtil.setUp(myCloudantCreds)
-
-                // the package alarms should be there
-                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-                println("fetched package cloudant")
-                packageGetResult.stdout should include("ok")
-
-                // create package binding
-                assetHelper.withCleaner(wsk.pkg, packageName) {
-                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-                }
-
-                val username = myCloudantCreds.user
-                val password = myCloudantCreds.password
-                val host = myCloudantCreds.host()
-                val dbName = myCloudantCreds.dbname
-                val port = 443
-                val protocol = "https"
-                val since = "now"
-                val filter = "test_filter/fruit"
-                val queryParams = JsObject("type" -> JsString("tomato"))
-
-                // create whisk stuff
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
-                    (trigger, name) =>
-                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                            "username" -> username.toJson,
-                            "password" -> password.toJson,
-                            "host" -> host.toJson,
-                            "dbname" -> dbName.toJson,
-                            "filter" -> filter.toJson,
-                            "query_params" -> queryParams,
-                            "protocol" -> protocol.toJson,
-                            "port" -> port.toJson,
-                            "since" -> since.toJson
-                        ))
-                }
-                feedCreationResult.stdout should include("ok")
-
-                val actionName = s"$packageName/$feed"
-                val run = wsk.action.invoke(actionName, parameters = Map(
-                    "triggerName" -> triggerName.toJson,
-                    "lifecycleEvent" -> "READ".toJson,
-                    "authKey" -> wskProps.authKey.toJson
-                ))
-
-                withActivation(wsk.activation, run) {
-                    activation =>
-                        activation.response.success shouldBe true
-
-                        inside(activation.response.result) {
-                            case Some(result) =>
-                                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
-                                val status = result.getFields("status").head.asInstanceOf[JsObject].fields
-
-                                config should contain("name" -> triggerName.toJson)
-                                config should contain("username" -> username.toJson)
-                                config should contain("password" -> password.toJson)
-                                config should contain("dbname" -> dbName.toJson)
-                                config should contain("filter" -> filter.toJson)
-                                config should contain("query_params" -> queryParams)
-                                config should contain("protocol" -> protocol.toJson)
-                                config should contain("port" -> port.toJson)
-                                config should contain("since" -> since.toJson)
-                                config should contain key "namespace"
-
-                                status should contain("active" -> true.toJson)
-                                status should contain key "dateChanged"
-                                status should contain key "dateChangedISO"
-                                status should not(contain key "reason")
-                        }
-                }
-            } finally {
-                CloudantUtil.unsetUp(myCloudantCreds)
-            }
-
     }
 
     it should "not return fields in configuration that are not passed in during trigger create" in withAssetCleaner(wskprops) {
