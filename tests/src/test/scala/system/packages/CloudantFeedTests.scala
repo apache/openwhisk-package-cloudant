@@ -677,6 +677,25 @@ class CloudantFeedTests
                 ))
                 feedUpdateResult.stdout should include("ok")
 
+                val runResult = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "READ".toJson,
+                    "authKey" -> wskProps.authKey.toJson
+                ))
+
+                withActivation(wsk.activation, runResult) {
+                    activation =>
+                        activation.response.success shouldBe true
+
+                        inside(activation.response.result) {
+                            case Some(result) =>
+                                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+
+                                config should contain("filter" -> "test_filter/fruit".toJson)
+                                config should contain("query_params" -> JsObject("type" -> JsString("avocado")))
+                        }
+                }
+
                 println("Creating a test doc-3 in the cloudant")
                 val response3 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"berry\", \"type\":\"avocado\"}")
                 response3.get("ok").getAsString() should be("true")
