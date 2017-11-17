@@ -3,13 +3,14 @@ var request = require('request');
 function main(msg) {
 
     let eventMap = {
-        CREATE: 'put',
+        CREATE: 'post',
         READ: 'get',
-        // UPDATE: 'put',
+        UPDATE: 'put',
         DELETE: 'delete'
     };
     // for creation -> CREATE
     // for reading -> READ
+    // for updating -> UPDATE
     // for deletion -> DELETE
     var lifecycleEvent = msg.lifecycleEvent;
 

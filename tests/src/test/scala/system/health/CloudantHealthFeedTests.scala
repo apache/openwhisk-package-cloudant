@@ -193,7 +193,6 @@ class CloudantHealthFeedTests
             activations should be(1)
     }
 
-
     it should "return correct status and configuration" in withAssetCleaner(wskprops) {
         val currentTime = s"${System.currentTimeMillis}"
 
@@ -274,6 +273,108 @@ class CloudantHealthFeedTests
                                 status should contain key "dateChanged"
                                 status should contain key "dateChangedISO"
                                 status should not(contain key "reason")
+                        }
+                }
+            } finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
+
+    it should "update filter and query_params parameters" in withAssetCleaner(wskprops) {
+        val currentTime = s"${System.currentTimeMillis}"
+
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                // the package alarms should be there
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("fetched package cloudant")
+                packageGetResult.stdout should include("ok")
+
+                // create package binding
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                val username = myCloudantCreds.user
+                val password = myCloudantCreds.password
+                val host = myCloudantCreds.host()
+                val dbName = myCloudantCreds.dbname
+                val filter = "test_filter/fruit"
+                val queryParams = JsObject("type" -> JsString("tomato"))
+
+                // create whisk stuff
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> username.toJson,
+                            "password" -> password.toJson,
+                            "host" -> host.toJson,
+                            "dbname" -> dbName.toJson,
+                            "filter" -> filter.toJson,
+                            "query_params" -> queryParams
+                        ))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                val actionName = s"$packageName/$feed"
+                val readRunResult = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "READ".toJson,
+                    "authKey" -> wskProps.authKey.toJson
+                ))
+
+                withActivation(wsk.activation, readRunResult) {
+                    activation =>
+                        activation.response.success shouldBe true
+
+                        inside(activation.response.result) {
+                            case Some(result) =>
+                                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+
+                                config should contain("filter" -> filter.toJson)
+                                config should contain("query_params" -> queryParams)
+                        }
+                }
+
+                val updatedFilter = "test_filter/vegetable"
+                val updatedQueryParams = JsObject("type" -> JsString("celery"))
+
+                val updateRunAction = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "UPDATE".toJson,
+                    "authKey" -> wskProps.authKey.toJson,
+                    "filter" -> updatedFilter.toJson,
+                    "query_params" -> updatedQueryParams
+                ))
+
+                withActivation(wsk.activation, updateRunAction) {
+                    activation =>
+                        activation.response.success shouldBe true
+                }
+
+                val runResult = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "READ".toJson,
+                    "authKey" -> wskProps.authKey.toJson
+                ))
+
+                withActivation(wsk.activation, runResult) {
+                    activation =>
+                        activation.response.success shouldBe true
+
+                        inside(activation.response.result) {
+                            case Some(result) =>
+                                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+
+                                config should contain("filter" -> updatedFilter.toJson)
+                                config should contain("query_params" -> updatedQueryParams)
                         }
                 }
             } finally {

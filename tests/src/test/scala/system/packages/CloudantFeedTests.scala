@@ -396,7 +396,216 @@ class CloudantFeedTests
             } finally {
                 CloudantUtil.unsetUp(myCloudantCreds)
             }
+    }
 
-  }
+    it should "reject trigger update without passing in any updatable parameters" in withAssetCleaner(wskprops) {
+        val currentTime = s"${System.currentTimeMillis}"
 
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                // the package alarms should be there
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("fetched package cloudant")
+                packageGetResult.stdout should include("ok")
+
+                // create package binding
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                val username = myCloudantCreds.user
+                val password = myCloudantCreds.password
+                val host = myCloudantCreds.host()
+                val dbName = myCloudantCreds.dbname
+
+                // create whisk stuff
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> username.toJson,
+                            "password" -> password.toJson,
+                            "host" -> host.toJson,
+                            "dbname" -> dbName.toJson
+                        ))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                val actionName = s"$packageName/$feed"
+                val run = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "UPDATE".toJson,
+                    "authKey" -> wskProps.authKey.toJson
+                ))
+
+                withActivation(wsk.activation, run) {
+                    activation =>
+                        activation.response.success shouldBe false
+                }
+            } finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
+
+    it should "reject trigger update when query_params is passed in and no filter is defined" in withAssetCleaner(wskprops) {
+        val currentTime = s"${System.currentTimeMillis}"
+
+        (wp, assetHelper) =>
+            implicit val wskProps = wp
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                // the package alarms should be there
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("fetched package cloudant")
+                packageGetResult.stdout should include("ok")
+
+                // create package binding
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                val username = myCloudantCreds.user
+                val password = myCloudantCreds.password
+                val host = myCloudantCreds.host()
+                val dbName = myCloudantCreds.dbname
+
+                // create whisk stuff
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> username.toJson,
+                            "password" -> password.toJson,
+                            "host" -> host.toJson,
+                            "dbname" -> dbName.toJson
+                        ))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                val actionName = s"$packageName/$feed"
+                val run = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "UPDATE".toJson,
+                    "authKey" -> wskProps.authKey.toJson,
+                    "query_params" -> JsObject("type" -> JsString("tomato"))
+                ))
+
+                withActivation(wsk.activation, run) {
+                    activation =>
+                        activation.response.success shouldBe false
+                }
+            } finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
+
+    it should "filter out triggers that do not meet the filter criteria before and after updating query_params" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskProps = wp // shadow global props and make implicit
+            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val packageName = "dummyCloudantPackage"
+            val feed = "changes"
+            val actionName = s"$packageName/$feed"
+
+            try {
+                CloudantUtil.setUp(myCloudantCreds)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                //Create filter design doc
+                val filterDesignDoc = CloudantUtil.createDesignFromFile(CloudantUtil.FILTER_DDOC_PATH).toString
+                val getResponse = CloudantUtil.createDocument(myCloudantCreds, filterDesignDoc)
+                getResponse.get("ok").getAsString shouldBe "true"
+
+                println("Creating cloudant trigger feed.")
+                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                    (trigger, name) =>
+                        trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
+                            "username" -> myCloudantCreds.user.toJson,
+                            "password" -> myCloudantCreds.password.toJson,
+                            "host" -> myCloudantCreds.host().toJson,
+                            "dbname" -> myCloudantCreds.dbname.toJson,
+                            "filter" -> "test_filter/fruit".toJson,
+                            "query_params" -> JsObject("type" -> JsString("tomato"))))
+                }
+                feedCreationResult.stdout should include("ok")
+
+                // Create test docs in cloudant and assert that document was inserted successfully
+                println("Creating a test doc-1 in the cloudant")
+                val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
+                response1.get("ok").getAsString() should be("true")
+
+                println("Checking for activations")
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+                println(s"Found activation size (should be exactly 1): $activations")
+                activations should be(1)
+
+                println("Creating a test doc-2 in the cloudant")
+                val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"dairy\",\"type\":\"butter\"}")
+                response2.get("ok").getAsString() should be("true")
+
+                println("checking for new activations (not expected since it should be filtered out)")
+                val noNewActivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
+                println(s"Found activation size (should still be 1): $noNewActivations")
+                noNewActivations should be(1)
+
+                println("Updating trigger query_params.")
+                val feedUpdateResult = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "UPDATE".toJson,
+                    "authKey" -> wskProps.authKey.toJson,
+                    "query_params" -> JsObject("type" -> JsString("avocado"))
+                ))
+                feedUpdateResult.stdout should include("ok")
+
+                val runResult = wsk.action.invoke(actionName, parameters = Map(
+                    "triggerName" -> triggerName.toJson,
+                    "lifecycleEvent" -> "READ".toJson,
+                    "authKey" -> wskProps.authKey.toJson
+                ))
+
+                withActivation(wsk.activation, runResult) {
+                    activation =>
+                        activation.response.success shouldBe true
+
+                        inside(activation.response.result) {
+                            case Some(result) =>
+                                val config = result.getFields("config").head.asInstanceOf[JsObject].fields
+
+                                config should contain("filter" -> "test_filter/fruit".toJson)
+                                config should contain("query_params" -> JsObject("type" -> JsString("avocado")))
+                        }
+                }
+
+                println("Creating a test doc-3 in the cloudant")
+                val response3 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"berry\", \"type\":\"avocado\"}")
+                response3.get("ok").getAsString() should be("true")
+
+                println("Checking for new activations (should now have 2)")
+                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length
+                println(s"Found activation size (should be 2): $newActivations")
+                newActivations should be(2)
+
+            }
+            finally {
+                CloudantUtil.unsetUp(myCloudantCreds)
+            }
+    }
 }
