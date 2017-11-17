@@ -146,18 +146,22 @@ function main(params) {
             })
             .then(trigger => {
                 if (params.filter || params.query_params) {
-                    var updatedTrigger = trigger;
+                    var updatedParams = {
+                        filter: trigger.filter,
+                        query_params: trigger.query_params
+                    };
+                    
                     if (params.filter) {
-                        updatedTrigger.filter = params.filter;
+                        updatedParams.filter = params.filter;
                     }
                     if (params.query_params) {
-                        if (updatedTrigger.filter) {
+                        if (updatedParams.filter) {
                             if (typeof params.query_params === 'object') {
-                                updatedTrigger.query_params = params.query_params;
+                                updatedParams.query_params = params.query_params;
                             }
                             else if (typeof params.query_params === 'string') {
                                 try {
-                                    updatedTrigger.query_params = JSON.parse(params.query_params);
+                                    updatedParams.query_params = JSON.parse(params.query_params);
                                 }
                                 catch (e) {
                                     reject(sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.'));
@@ -167,7 +171,7 @@ function main(params) {
                             reject(sendError(400, 'The query_params parameter is only allowed if the filter parameter is defined'));
                         }
                     }
-                    return updateTrigger(db, triggerID, updatedTrigger);
+                    return updateTrigger(db, triggerID, trigger, updatedParams);
                 } else {
                     reject(sendError(400, 'At least one of filter or query_params parameters must be supplied'));
                 }
@@ -349,7 +353,7 @@ function deleteTrigger(triggerDB, triggerID, retryCount) {
     });
 }
 
-function updateTrigger(triggerDB, triggerID, updatedTrigger) {
+function updateTrigger(triggerDB, triggerID, existing, params) {
 
     return new Promise(function(resolve, reject) {
         var message = 'Automatically disabled trigger while updating';
@@ -358,10 +362,10 @@ function updateTrigger(triggerDB, triggerID, updatedTrigger) {
             'dateChanged': Date.now(),
             'reason': {'kind': 'AUTO', 'statusCode': undefined, 'message': message}
         };
-        updatedTrigger.status = status;
-        triggerDB.insert(updatedTrigger, triggerID, function (err) {
+        existing.status = status;
+        triggerDB.insert(existing, triggerID, function (err) {
             if (err) {
-                reject(sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+                reject(sendError(err.statusCode, 'there was an error while disabling the trigger in the database.', err.message));
             }
             else {
                 resolve();
@@ -372,6 +376,11 @@ function updateTrigger(triggerDB, triggerID, updatedTrigger) {
         return getTrigger(triggerDB, triggerID);
     })
     .then(trigger => {
+        for (key in params) {
+            if (params[key]) {
+                trigger[key] = params[key];
+            }
+        }
         var status = {
             'active': true,
             'dateChanged': Date.now()
@@ -381,7 +390,7 @@ function updateTrigger(triggerDB, triggerID, updatedTrigger) {
         return new Promise(function(resolve, reject) {
             triggerDB.insert(trigger, triggerID, function (err) {
                 if (err) {
-                    reject(sendError(err.statusCode, 'there was an error while updating the trigger in the database.', err.message));
+                    reject(sendError(err.statusCode, 'there was an error while updating and re-enabling the trigger in the database.', err.message));
                 }
                 else {
                     resolve();
