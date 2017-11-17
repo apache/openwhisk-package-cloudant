@@ -150,7 +150,7 @@ function main(params) {
                         filter: trigger.filter,
                         query_params: trigger.query_params
                     };
-                    
+
                     if (params.filter) {
                         updatedParams.filter = params.filter;
                     }
