@@ -376,7 +376,7 @@ function updateTrigger(triggerDB, triggerID, existing, params) {
         return getTrigger(triggerDB, triggerID);
     })
     .then(trigger => {
-        for (key in params) {
+        for (var key in params) {
             if (params[key]) {
                 trigger[key] = params[key];
             }
