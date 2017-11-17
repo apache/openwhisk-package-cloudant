@@ -145,6 +145,9 @@ function main(params) {
                 return getTrigger(db, triggerID);
             })
             .then(trigger => {
+                if (!trigger.status.active) {
+                    reject(sendError(400, `${params.triggerName} cannot be updated because it is disabled`));
+                }
                 if (params.filter || params.query_params) {
                     var updatedParams = {
                         filter: trigger.filter,
