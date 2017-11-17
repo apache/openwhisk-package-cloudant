@@ -78,7 +78,7 @@ $WSK_CLI -i --apihost "$EDGEHOST" action update --auth "$AUTH" cloudant/changes 
     -t 90000 \
     -a feed true \
     -a description 'Database change feed' \
-    -a parameters '[ {"name":"dbname", "required":true}, {"name": "filter", "required":false, "type": "string", "description": "The name of your Cloudant database filter"}, {"name": "query_params", "required":false, "description": "JSON Object containing query parameters that are passed to the filter"} ]' \
+    -a parameters '[ {"name":"dbname", "required":true, "updatable":false}, {"name": "filter", "required":false, "updatable":true, "type": "string", "description": "The name of your Cloudant database filter"}, {"name": "query_params", "required":false, "updatable":true, "description": "JSON Object containing query parameters that are passed to the filter"} ]' \
     -a sampleInput '{ "dbname": "mydb", "filter": "mailbox/by_status", "query_params": {"status": "new"} }'
 
 # Cloudant web feed action
