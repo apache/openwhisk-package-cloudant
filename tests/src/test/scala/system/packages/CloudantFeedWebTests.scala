@@ -58,36 +58,36 @@ class CloudantFeedWebTests
     it should "reject put of a trigger due to missing triggerName argument" in {
         val params = JsObject(requiredParams.fields - "triggerName")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
     }
 
     it should "reject put of a trigger due to missing host argument" in {
         val params = JsObject(requiredParams.fields - "host")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing host parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing host parameter")), 400)
     }
 
     it should "reject put of a trigger due to missing username argument" in {
         val params = JsObject(requiredParams.fields - "username")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing username parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing username parameter")), 400)
     }
 
     it should "reject put of a trigger due to missing password argument" in {
         val params = JsObject(requiredParams.fields - "password")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing password parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing password parameter")), 400)
     }
 
     it should "reject put of a trigger due to missing dbname argument" in {
         val params = JsObject(requiredParams.fields - "dbname")
 
-        makePutCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing dbname parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing dbname parameter")), 400)
     }
 
     it should "reject put of a trigger when authentication fails" in {
 
-        makePutCallWithExpectedResult(requiredParams, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
+        makePostCallWithExpectedResult(requiredParams, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }
 
     it should "reject delete of a trigger due to missing triggerName argument" in {
@@ -100,12 +100,12 @@ class CloudantFeedWebTests
         makeDeleteCallWithExpectedResult(requiredParams, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }
 
-    def makePutCallWithExpectedResult(params: JsObject, expectedResult: JsObject, expectedCode: Int) = {
+    def makePostCallWithExpectedResult(params: JsObject, expectedResult: JsObject, expectedCode: Int) = {
         val response = RestAssured.given()
                 .contentType(ContentType.JSON)
                 .config(RestAssured.config().sslConfig(new SSLConfig().relaxedHTTPSValidation()))
                 .body(params.toString())
-                .put(webActionURL)
+                .post(webActionURL)
         assert(response.statusCode() == expectedCode)
         response.body.asString.parseJson.asJsObject shouldBe expectedResult
     }
