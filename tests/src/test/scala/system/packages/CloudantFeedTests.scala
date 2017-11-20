@@ -573,7 +573,14 @@ class CloudantFeedTests
                     "authKey" -> wskProps.authKey.toJson,
                     "query_params" -> JsObject("type" -> JsString("avocado"))
                 ))
-                feedUpdateResult.stdout should include("ok")
+
+                withActivation(wsk.activation, feedUpdateResult) {
+                    activation =>
+                        activation.response.success shouldBe true
+                }
+
+                println("Giving the trigger service a moment to process the update")
+                Thread.sleep(10000)
 
                 val runResult = wsk.action.invoke(actionName, parameters = Map(
                     "triggerName" -> triggerName.toJson,
