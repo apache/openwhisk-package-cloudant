@@ -55,37 +55,37 @@ class CloudantFeedWebTests
         wsk.action.get(webAction, FORBIDDEN)
     }
 
-    it should "reject put of a trigger due to missing triggerName argument" in {
+    it should "reject post of a trigger due to missing triggerName argument" in {
         val params = JsObject(requiredParams.fields - "triggerName")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("no trigger name parameter was provided")), 400)
     }
 
-    it should "reject put of a trigger due to missing host argument" in {
+    it should "reject post of a trigger due to missing host argument" in {
         val params = JsObject(requiredParams.fields - "host")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing host parameter")), 400)
     }
 
-    it should "reject put of a trigger due to missing username argument" in {
+    it should "reject post of a trigger due to missing username argument" in {
         val params = JsObject(requiredParams.fields - "username")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing username parameter")), 400)
     }
 
-    it should "reject put of a trigger due to missing password argument" in {
+    it should "reject post of a trigger due to missing password argument" in {
         val params = JsObject(requiredParams.fields - "password")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing password parameter")), 400)
     }
 
-    it should "reject put of a trigger due to missing dbname argument" in {
+    it should "reject post of a trigger due to missing dbname argument" in {
         val params = JsObject(requiredParams.fields - "dbname")
 
         makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing dbname parameter")), 400)
     }
 
-    it should "reject put of a trigger when authentication fails" in {
+    it should "reject post of a trigger when authentication fails" in {
 
         makePostCallWithExpectedResult(requiredParams, JsObject("error" -> JsString("Trigger authentication request failed.")), 401)
     }
