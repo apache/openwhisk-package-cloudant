@@ -11,7 +11,7 @@
     "winston": "^2.1.1",
     "moment": "^2.11.1",
     "lodash": "^3.10.1",
-    "request": "^2.83.1",
+    "request": "^2.83.0",
     "cloudant-nano": "6.7.0",
     "json-stringify-safe": "^5.0.1",
     "http-status-codes": "^1.0.5",
