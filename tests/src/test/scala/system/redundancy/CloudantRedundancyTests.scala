@@ -18,7 +18,7 @@ package system.redundancy
 
 import com.jayway.restassured.RestAssured
 import com.jayway.restassured.config.SSLConfig
-import common.{WhiskProperties, Wsk, WskProps, WskTestHelpers}
+import common._
 import org.junit.runner.RunWith
 import org.scalatest.junit.JUnitRunner
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -47,12 +47,13 @@ class CloudantRedundancyTests
     val wskprops = WskProps()
     val wsk = new Wsk
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
-    var edgeHost = WhiskProperties.getEdgeHost
+    val edgeHost = WhiskProperties.getEdgeHost
     val auth = WhiskProperties.getBasicAuth
     val user = auth.fst
     val password = auth.snd
 
-    var endpointPrefix = s"https://$user:$password@$edgeHost/cloudanttrigger/worker0/"
+    val endpointPrefix = s"https://$user:$password@$edgeHost/cloudanttrigger/worker0/"
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
 
     behavior of "Cloudant redundancy tests"
 
@@ -60,6 +61,8 @@ class CloudantRedundancyTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -76,6 +79,11 @@ class CloudantRedundancyTests
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
+                // create action
+                assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                    action.create(name, defaultAction)
+                }
+
                 // create whisk stuff
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
@@ -85,7 +93,11 @@ class CloudantRedundancyTests
                             "host" -> myCloudantCreds.host().toJson,
                             "dbname" -> myCloudantCreds.dbname.toJson))
                 }
-                feedCreationResult.stdout should include("ok")
+
+                // create rule
+                assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                    rule.create(name, trigger = triggerName, action = actionName)
+                }
 
                 Thread.sleep(3000)
 
@@ -131,6 +143,8 @@ class CloudantRedundancyTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -147,6 +161,11 @@ class CloudantRedundancyTests
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
+                // create action
+                assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                    action.create(name, defaultAction)
+                }
+
                 // create whisk stuff
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
@@ -156,7 +175,11 @@ class CloudantRedundancyTests
                             "host" -> myCloudantCreds.host().toJson,
                             "dbname" -> myCloudantCreds.dbname.toJson))
                 }
-                feedCreationResult.stdout should include("ok")
+
+                // create rule
+                assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                    rule.create(name, trigger = triggerName, action = actionName)
+                }
 
                 Thread.sleep(3000)
 

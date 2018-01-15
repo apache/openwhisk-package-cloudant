@@ -39,6 +39,7 @@ class CloudantFeedTests
     val wskprops = WskProps()
     val wsk = new Wsk
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
 
     behavior of "Cloudant trigger service"
 
@@ -203,6 +204,8 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -218,6 +221,11 @@ class CloudantFeedTests
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
                 }
 
+                // create action
+                assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                    action.create(name, defaultAction)
+                }
+
                 println("Creating cloudant trigger feed.")
                 val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
@@ -228,7 +236,11 @@ class CloudantFeedTests
                             "dbname" -> myCloudantCreds.dbname.toJson,
                             "maxTriggers" -> 1.toJson))
                 }
-                feedCreationResult.stdout should include("ok")
+
+                // create rule
+                assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                    rule.create(name, trigger = triggerName, action = actionName)
+                }
 
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
@@ -258,6 +270,8 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -271,6 +285,11 @@ class CloudantFeedTests
                 println("Creating cloudant package binding.")
                 assetHelper.withCleaner(wsk.pkg, packageName) {
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                // create action
+                assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                    action.create(name, defaultAction)
                 }
 
                 //Create filter design doc
@@ -289,7 +308,11 @@ class CloudantFeedTests
                             "filter" -> "test_filter/fruit".toJson,
                             "query_params" -> JsObject("type" -> JsString("tomato"))))
                 }
-                feedCreationResult.stdout should include("ok")
+
+                // create rule
+                assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                    rule.create(name, trigger = triggerName, action = actionName)
+                }
 
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
@@ -513,9 +536,10 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskProps = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
-            val actionName = s"$packageName/$feed"
 
             try {
                 CloudantUtil.setUp(myCloudantCreds)
@@ -527,6 +551,11 @@ class CloudantFeedTests
                 println("Creating cloudant package binding.")
                 assetHelper.withCleaner(wsk.pkg, packageName) {
                     (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+                }
+
+                // create action
+                assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                    action.create(name, defaultAction)
                 }
 
                 //Create filter design doc
@@ -545,7 +574,11 @@ class CloudantFeedTests
                             "filter" -> "test_filter/fruit".toJson,
                             "query_params" -> JsObject("type" -> JsString("tomato"))))
                 }
-                feedCreationResult.stdout should include("ok")
+
+                // create rule
+                assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                    rule.create(name, trigger = triggerName, action = actionName)
+                }
 
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
@@ -567,7 +600,7 @@ class CloudantFeedTests
                 noNewActivations should be(1)
 
                 println("Updating trigger query_params.")
-                val feedUpdateResult = wsk.action.invoke(actionName, parameters = Map(
+                val feedUpdateResult = wsk.action.invoke(s"$packageName/$feed", parameters = Map(
                     "triggerName" -> triggerName.toJson,
                     "lifecycleEvent" -> "UPDATE".toJson,
                     "authKey" -> wskProps.authKey.toJson,
@@ -582,7 +615,7 @@ class CloudantFeedTests
                 println("Giving the trigger service a moment to process the update")
                 Thread.sleep(10000)
 
-                val runResult = wsk.action.invoke(actionName, parameters = Map(
+                val runResult = wsk.action.invoke(s"$packageName/$feed", parameters = Map(
                     "triggerName" -> triggerName.toJson,
                     "lifecycleEvent" -> "READ".toJson,
                     "authKey" -> wskProps.authKey.toJson
