@@ -3,9 +3,9 @@
  * Service which can be configured to listen for triggers from a provider.
  * The Provider will store, invoke, and POST whisk events appropriately.
  */
+var URL = require('url').URL;
 var http = require('http');
 var express = require('express');
-var request = require('request');
 var bodyParser = require('body-parser');
 var bluebird = require('bluebird');
 var logger = require('./Logger');
@@ -24,6 +24,7 @@ app.set('port', process.env.PORT || 8080);
 
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+
 
 // If it does not already exist, create the triggers database.  This is the database that will
 // store the managed triggers.
@@ -130,9 +131,21 @@ function createRedisClient() {
 
     return new Promise(function(resolve, reject) {
         if (redisUrl) {
+            var client;
             var redis = require('redis');
             bluebird.promisifyAll(redis.RedisClient.prototype);
-            var client = redis.createClient(redisUrl);
+            if (redisUrl.startsWith('rediss://')) {
+                // If this is a rediss: connection, we have some other steps.
+                client = redis.createClient(redisUrl, {
+                    tls: { servername: new URL(redisUrl).hostname }
+                });
+                // This will, with node-redis 2.8, emit an error:
+                // "node_redis: WARNING: You passed "rediss" as protocol instead of the "redis" protocol!"
+                // This is a bogus message and should be fixed in a later release of the package.
+            } else {
+                client = redis.createClient(redisUrl);
+            }
+
 
             client.on('connect', function () {
                 resolve(client);
