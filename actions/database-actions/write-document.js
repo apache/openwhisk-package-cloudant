@@ -62,8 +62,8 @@ function insertOrUpdate(cloudantDb, overwrite, doc) {
                                reject(err);
                             });
                     } else {
-                        console.error('error', error);
-                        reject(error);
+                        // If not found, it means it's the first time to write, then insert a new one.
+                        return insert(cloudantDb, doc);
                     }
                 });
             });
