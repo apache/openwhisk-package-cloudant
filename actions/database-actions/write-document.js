@@ -10,6 +10,7 @@ function main(message) {
     var dbName = message.dbname;
     var doc = message.doc;
     var overwrite;
+    var putIfAbsent;
 
     if (!dbName) {
         return Promise.reject('dbname is required.');
@@ -39,15 +40,24 @@ function main(message) {
         overwrite = false;
     }
 
+    if (typeof message.putIfAbsent === 'boolean') {
+        putIfAbsent = message.putIfAbsent;
+    } else if (typeof message.putIfAbsent === 'string') {
+        putIfAbsent = message.putIfAbsent.trim().toLowerCase() === 'true';
+    } else {
+        putIfAbsent = false;
+    }
+
     var cloudantDb = cloudant.use(dbName);
-    return insertOrUpdate(cloudantDb, overwrite, doc);
+    return insertOrUpdate(cloudantDb, overwrite, putIfAbsent, doc);
 }
 
 /**
  * If id defined and overwrite is true, checks if doc exists to retrieve version
  * before insert. Else inserts.
+ * If
  */
-function insertOrUpdate(cloudantDb, overwrite, doc) {
+function insertOrUpdate(cloudantDb, overwrite, putIfAbsent, doc) {
     if (doc._id) {
         if (overwrite) {
             return new Promise(function(resolve, reject) {
@@ -62,8 +72,13 @@ function insertOrUpdate(cloudantDb, overwrite, doc) {
                                reject(err);
                             });
                     } else {
-                        console.error('error', error);
-                        reject(error);
+                        if(error.statusCode === 404 && putIfAbsent) {
+                            // If document not found, insert it
+                            return insert(cloudantDb, doc);
+                        } else {
+                            console.error('error', error);
+                            reject(error);
+                        }
                     }
                 });
             });
