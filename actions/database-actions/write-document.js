@@ -64,7 +64,13 @@ function insertOrUpdate(cloudantDb, overwrite, doc) {
                     } else {
                         if(error.statusCode === 404) {
                             // If document not found, insert it
-                            return insert(cloudantDb, doc);
+                            insert(cloudantDb, doc)
+                                .then(function (response) {
+                                    resolve(response);
+                                })
+                                .catch(function (err) {
+                                    reject(err);
+                                });
                         } else {
                             console.error('error', error);
                             reject(error);
