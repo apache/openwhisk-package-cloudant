@@ -45,8 +45,7 @@ function main(message) {
 
 /**
  * If id defined and overwrite is true, checks if doc exists to retrieve version
- * before insert. Else inserts.
- * If
+ * before insert. Else inserts a new doc.
  */
 function insertOrUpdate(cloudantDb, overwrite, doc) {
     if (doc._id) {
