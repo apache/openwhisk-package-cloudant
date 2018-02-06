@@ -10,7 +10,6 @@ function main(message) {
     var dbName = message.dbname;
     var doc = message.doc;
     var overwrite;
-    var putIfAbsent;
 
     if (!dbName) {
         return Promise.reject('dbname is required.');
