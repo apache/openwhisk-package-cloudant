@@ -45,7 +45,7 @@ function main(message) {
 
 /**
  * If id defined and overwrite is true, checks if doc exists to retrieve version
- * before insert. Else inserts.
+ * before insert. Else inserts a new doc.
  */
 function insertOrUpdate(cloudantDb, overwrite, doc) {
     if (doc._id) {
@@ -62,8 +62,19 @@ function insertOrUpdate(cloudantDb, overwrite, doc) {
                                reject(err);
                             });
                     } else {
-                        console.error('error', error);
-                        reject(error);
+                        if(error.statusCode === 404) {
+                            // If document not found, insert it
+                            insert(cloudantDb, doc)
+                                .then(function (response) {
+                                    resolve(response);
+                                })
+                                .catch(function (err) {
+                                    reject(err);
+                                });
+                        } else {
+                            console.error('error', error);
+                            reject(error);
+                        }
                     }
                 });
             });
