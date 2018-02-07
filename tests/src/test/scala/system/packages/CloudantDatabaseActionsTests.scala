@@ -242,7 +242,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
             }
     }
 
-    it should """write cloudant document with overwrite""" in withAssetCleaner(wskprops) {
+    it should """write existing cloudant document with overwrite""" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp
             val packageName = "dummyCloudantPackage"
@@ -269,6 +269,47 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 val response = CloudantUtil.createDocument(credential, doc)
                 response.get("ok").getAsString shouldBe "true"
 
+                val docJSObj = doc.parseJson.asJsObject
+
+                println("Invoking the write action.")
+                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/write",
+                    Map("doc" -> docJSObj,
+                        "overwrite" -> "true".toJson))) {
+                    activation =>
+                        activation.response.success shouldBe true
+                        activation.response.result.get.fields.get("id") shouldBe defined
+                }
+                val getResponse = CloudantUtil.getDocument(credential, "testId")
+                Some(JsString(getResponse.get("date").getAsString)) shouldBe docJSObj.fields.get("date")
+            }
+            finally {
+                CloudantUtil.unsetUp(credential)
+            }
+    }
+
+    it should """write new cloudant document with overwrite""" in withAssetCleaner(wskprops) {
+        (wp, assetHelper) =>
+            implicit val wskprops = wp
+            val packageName = "dummyCloudantPackage"
+
+            try {
+                CloudantUtil.setUp(credential)
+
+                val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
+                println("Fetching cloudant package.")
+                packageGetResult.stdout should include("ok")
+
+                println("Creating cloudant package binding.")
+                assetHelper.withCleaner(wsk.pkg, packageName) {
+                    (pkg, name) =>
+                        pkg.bind("/whisk.system/cloudant", name,
+                            Map("username" -> credential.user.toJson,
+                                "password" -> credential.password.toJson,
+                                "host" -> credential.host().toJson,
+                                "dbname" -> credential.dbname.toJson))
+                }
+
+                val doc = CloudantUtil.createDocParameterForWhisk().get("doc").getAsString
                 val docJSObj = doc.parseJson.asJsObject
 
                 println("Invoking the write action.")
