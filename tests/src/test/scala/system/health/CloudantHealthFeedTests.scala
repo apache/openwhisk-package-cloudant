@@ -21,11 +21,7 @@ import java.time.{Clock, Instant}
 import org.junit.runner.RunWith
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
-import common.TestHelpers
-import common.Wsk
-import common.WskActorSystem
-import common.WskProps
-import common.WskTestHelpers
+import common._
 import spray.json.DefaultJsonProtocol.IntJsonFormat
 import spray.json.DefaultJsonProtocol.StringJsonFormat
 import spray.json.DefaultJsonProtocol.BooleanJsonFormat
@@ -46,6 +42,7 @@ class CloudantHealthFeedTests
 
     val wskprops = WskProps()
     val wsk = new Wsk
+    val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
 
     behavior of "Cloudant Health trigger service"
@@ -66,6 +63,8 @@ class CloudantHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -79,6 +78,11 @@ class CloudantHealthFeedTests
                 (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
             }
 
+            // create action
+            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                action.create(name, defaultAction)
+            }
+
             // create whisk stuff
             println(s"Creating trigger: $triggerName")
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
@@ -89,7 +93,11 @@ class CloudantHealthFeedTests
                         "host" -> myCloudantCreds.host().toJson,
                         "dbname" -> myCloudantCreds.dbname.toJson))
             }
-            feedCreationResult.stdout should include("ok")
+
+            // create rule
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = actionName)
+            }
 
             val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
             activationsBeforeChange should be(0)
@@ -121,43 +129,12 @@ class CloudantHealthFeedTests
             activationsAfterDelete should be(1)
     }
 
-    it should "fire changes since sequence 0 of DB" in withAssetCleaner(wskprops) {
-        (wp, assetHelper) =>
-            implicit val wskprops = wp // shadow global props and make implicit
-            val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val packageName = "dummyCloudantPackage"
-            val feed = "changes"
-
-            val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
-            println("Fetching cloudant package.")
-            packageGetResult.stdout should include("ok")
-
-            println("Creating cloudant package binding.")
-            assetHelper.withCleaner(wsk.pkg, packageName) {
-                (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
-            }
-
-            println(s"Creating trigger: $triggerName")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
-                (trigger, name) =>
-                    trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
-                        "username" -> myCloudantCreds.user.toJson,
-                        "password" -> myCloudantCreds.password.toJson,
-                        "host" -> myCloudantCreds.host().toJson,
-                        "dbname" -> myCloudantCreds.dbname.toJson,
-                        "maxTriggers" -> 100000000.toJson,
-                        "since" -> "0".toJson))
-            }
-            feedCreationResult.stdout should include("ok")
-
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
-            activations should be(1)
-    }
-
     it should "fire changes when a document is deleted" in withAssetCleaner(wskprops) {
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
+            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
+            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -168,6 +145,11 @@ class CloudantHealthFeedTests
             println("Creating cloudant package binding.")
             assetHelper.withCleaner(wsk.pkg, packageName) {
                 (pkg, name) => pkg.bind("/whisk.system/cloudant", name)
+            }
+
+            // create action
+            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
+                action.create(name, defaultAction)
             }
 
             println(s"Creating trigger: $triggerName")
@@ -180,7 +162,11 @@ class CloudantHealthFeedTests
                         "dbname" -> myCloudantCreds.dbname.toJson,
                         "maxTriggers" -> (-1).toJson))
             }
-            feedCreationResult.stdout should include("ok")
+
+            // create rule
+            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
+                rule.create(name, trigger = triggerName, action = actionName)
+            }
 
             val activationsBeforeDelete = wsk.activation.pollFor(N = 1, Some(triggerName)).length
             activationsBeforeDelete should be(0)
@@ -200,7 +186,7 @@ class CloudantHealthFeedTests
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
-            // the package alarms should be there
+            // the package cloudant should be there
             val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
             println("fetched package cloudant")
             packageGetResult.stdout should include("ok")
@@ -225,7 +211,7 @@ class CloudantHealthFeedTests
             val filter = "test_filter/fruit"
             val queryParams = JsObject("type" -> JsString("tomato"))
 
-            // create whisk stuff
+            // create trigger feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
@@ -286,7 +272,7 @@ class CloudantHealthFeedTests
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
-            // the package alarms should be there
+            // the package cloudant should be there
             val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
             println("fetched package cloudant")
             packageGetResult.stdout should include("ok")
@@ -308,7 +294,7 @@ class CloudantHealthFeedTests
             val filter = "test_filter/fruit"
             val queryParams = JsObject("type" -> JsString("tomato"))
 
-            // create whisk stuff
+            // create trigger feed
             val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
