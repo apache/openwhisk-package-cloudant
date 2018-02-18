@@ -44,6 +44,7 @@ class CloudantHealthFeedTests
     val wsk = new Wsk
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
+    val maxRetries = System.getProperty("max.retries", "60").toInt
 
     behavior of "Cloudant Health trigger service"
 
@@ -79,13 +80,13 @@ class CloudantHealthFeedTests
             }
 
             // create action
-            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
-                action.create(name, defaultAction)
+            assetHelper.withCleaner(wsk.action, actionName) {
+                (action, name) => action.create(name, defaultAction)
             }
 
             // create whisk stuff
             println(s"Creating trigger: $triggerName")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+            assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -95,8 +96,8 @@ class CloudantHealthFeedTests
             }
 
             // create rule
-            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = actionName)
+            assetHelper.withCleaner(wsk.rule, ruleName) {
+                (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
             val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
@@ -108,7 +109,7 @@ class CloudantHealthFeedTests
             println(s"created a test doc at $now")
 
             // get activation list of the trigger, expecting exactly 1
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             val nowPoll = Instant.now(Clock.systemUTC())
             println(s"Found activation size ($nowPoll): $activations")
             withClue("Change feed trigger count: ") { activations should be(1) }
@@ -148,12 +149,12 @@ class CloudantHealthFeedTests
             }
 
             // create action
-            assetHelper.withCleaner(wsk.action, actionName) { (action, name) =>
-                action.create(name, defaultAction)
+            assetHelper.withCleaner(wsk.action, actionName) {
+                (action, name) => action.create(name, defaultAction)
             }
 
             println(s"Creating trigger: $triggerName")
-            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName) {
+            assetHelper.withCleaner(wsk.trigger, triggerName) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -164,8 +165,8 @@ class CloudantHealthFeedTests
             }
 
             // create rule
-            assetHelper.withCleaner(wsk.rule, ruleName) { (rule, name) =>
-                rule.create(name, trigger = triggerName, action = actionName)
+            assetHelper.withCleaner(wsk.rule, ruleName) {
+                (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
             val activationsBeforeDelete = wsk.activation.pollFor(N = 1, Some(triggerName)).length
@@ -175,7 +176,7 @@ class CloudantHealthFeedTests
             println("delete a test doc")
             CloudantUtil.deleteDocument(myCloudantCreds, CloudantUtil.getDocument(myCloudantCreds, "testid"))
 
-            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 60).length
+            val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             activations should be(1)
     }
 
@@ -236,8 +237,7 @@ class CloudantHealthFeedTests
             ))
 
             withActivation(wsk.activation, run) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -261,8 +261,6 @@ class CloudantHealthFeedTests
                             status should not(contain key "reason")
                     }
             }
-
-
     }
 
     it should "update filter and query_params parameters" in withAssetCleaner(wskprops) {
@@ -317,8 +315,7 @@ class CloudantHealthFeedTests
             ))
 
             withActivation(wsk.activation, readRunResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
@@ -341,8 +338,7 @@ class CloudantHealthFeedTests
             ))
 
             withActivation(wsk.activation, updateRunAction) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
             }
 
             val runResult = wsk.action.invoke(actionName, parameters = Map(
@@ -352,8 +348,7 @@ class CloudantHealthFeedTests
             ))
 
             withActivation(wsk.activation, runResult) {
-                activation =>
-                    activation.response.success shouldBe true
+                activation => activation.response.success shouldBe true
 
                     inside(activation.response.result) {
                         case Some(result) =>
