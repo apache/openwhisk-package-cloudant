@@ -2,13 +2,13 @@ apply plugin: 'scala'
 apply plugin: 'eclipse'
 compileTestScala.options.encoding = 'UTF-8'
 
-evaluationDependsOn(':whisktests')
 
 repositories {
     mavenCentral()
     maven {
         url 'https://oss.sonatype.org/content/repositories/snapshots/'
     }
+    mavenLocal()
 
 }
 
@@ -29,8 +29,9 @@ task testHealth(type: Test) {
 dependencies {
     compile "org.scala-lang:scala-library:${gradle.scala.version}"
     compile 'com.cloudant:cloudant-client:1.0.1'
-    compile project(':whisktests')
-    compile project(':whisktests').sourceSets.test.output
+    compile "org.apache.openwhisk:openwhisk-tests:${gradle.openwhisk.version}:tests"
+    compile "org.apache.openwhisk:openwhisk-tests:${gradle.openwhisk.version}:test-sources"
+
 }
 
 tasks.withType(ScalaCompile) {
