@@ -5,7 +5,10 @@ const RETRY_DELAY = 1000; //in milliseconds
 const REDIS_KEY = 'active';
 const FILTERS_DESIGN_DOC = 'triggerFilters';
 const VIEWS_DESIGN_DOC = 'triggerViews';
+const MONITOR_DESIGN_DOC = 'monitorFilters';
 const TRIGGERS_BY_WORKER = 'triggers_by_worker';
+const DOCS_FOR_MONITOR = 'canary_docs';
+const MONITOR_INTERVAL = 5 * 1000 * 60; //in milliseconds
 
 
 module.exports = {
@@ -16,5 +19,8 @@ module.exports = {
     REDIS_KEY: REDIS_KEY,
     FILTERS_DESIGN_DOC: FILTERS_DESIGN_DOC,
     VIEWS_DESIGN_DOC: VIEWS_DESIGN_DOC,
-    TRIGGERS_BY_WORKER: TRIGGERS_BY_WORKER
+    TRIGGERS_BY_WORKER: TRIGGERS_BY_WORKER,
+    MONITOR_INTERVAL: MONITOR_INTERVAL,
+    MONITOR_DESIGN_DOC: MONITOR_DESIGN_DOC,
+    DOCS_FOR_MONITOR: DOCS_FOR_MONITOR
 };
