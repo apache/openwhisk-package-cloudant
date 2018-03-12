@@ -62,7 +62,7 @@ class CloudantAccountActionsTests extends FlatSpec
 
                 //create database
                 println("Invoking the create-database action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/create-database",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/create-database",
                     Map("dbname" -> dbName.toJson))) {
                     activation =>
                         activation.response.success shouldBe true
@@ -95,7 +95,7 @@ class CloudantAccountActionsTests extends FlatSpec
 
             //create database
             println("Invoking the create-database action.")
-            withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/create-database")) {
+            withActivation(wsk.activation, wsk.action.invoke(s"$packageName/create-database")) {
                 activation =>
                     activation.response.success shouldBe false
                     val result = activation.response.result.get
@@ -125,7 +125,7 @@ class CloudantAccountActionsTests extends FlatSpec
                 }
 
                 println("Invoking the read-database action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/read-database",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/read-database",
                     Map("dbname" -> credential.dbname.toJson))) {
                     activation =>
                         activation.response.success shouldBe true
@@ -157,7 +157,7 @@ class CloudantAccountActionsTests extends FlatSpec
             }
 
             println("Invoking the read-database action.")
-            withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/read-database",
+            withActivation(wsk.activation, wsk.action.invoke(s"$packageName/read-database",
                 Map("dbname" -> "doesNotExistDB".toJson))) {
                 activation =>
                     activation.response.success shouldBe false
@@ -188,14 +188,14 @@ class CloudantAccountActionsTests extends FlatSpec
                 }
 
                 println("Invoking the delete-database action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/delete-database",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/delete-database",
                     Map("dbname" -> credential.dbname.toJson))) {
                     activation =>
                         activation.response.success shouldBe true
                 }
                 val response = CloudantUtil.readTestDatabase(credential)
-                response.get("error").getAsString() shouldBe "not_found"
-                response.get("reason").getAsString() shouldBe "Database does not exist."
+                response.get("error").getAsString shouldBe "not_found"
+                response.get("reason").getAsString shouldBe "Database does not exist."
             }
             finally {
                 CloudantUtil.unsetUp(credential)
@@ -224,7 +224,7 @@ class CloudantAccountActionsTests extends FlatSpec
                 }
 
                 println("Invoking the delete-database action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/delete-database",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/delete-database",
                     Map("dbname" -> credential.dbname.toJson))) {
                     activation =>
                         activation.response.success shouldBe false
@@ -259,7 +259,7 @@ class CloudantAccountActionsTests extends FlatSpec
                 }
 
                 println("Invoking the list-all-databases action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/list-all-databases")) {
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/list-all-databases")) {
                     activation =>
                         activation.response.success shouldBe true
                         val result = activation.response.result.get
@@ -299,7 +299,7 @@ class CloudantAccountActionsTests extends FlatSpec
                 }
 
                 println("Invoking the list-all-databases action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/list-all-databases")) {
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/list-all-databases")) {
                     activation =>
                         activation.response.success shouldBe false
                         val result = activation.response.result.get

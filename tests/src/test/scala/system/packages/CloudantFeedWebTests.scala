@@ -35,7 +35,7 @@ class CloudantFeedWebTests
     val wskprops = WskProps()
 
     val webAction = "/whisk.system/cloudantWeb/changesWebAction"
-    val webActionURL = s"https://${wskprops.apihost}/api/v1/web${webAction}.http"
+    val webActionURL = s"https://${wskprops.apihost}/api/v1/web$webAction.http"
 
     val requiredParams = JsObject(
         "triggerName" -> JsString("/invalidNamespace/invalidTrigger"),

@@ -61,7 +61,7 @@ class CloudantBindingTests extends FlatSpec
                 }
 
                 println("Invoking the document-create action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/create-document",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/create-document",
                     Map(
                         "dbname" -> myCloudantCreds.dbname.toJson,
                         "doc" -> JsObject("message" -> "I used the url parameter.".toJson)))) {
@@ -100,7 +100,7 @@ class CloudantBindingTests extends FlatSpec
                 }
 
                 println("Invoking the document-create action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/create-document",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/create-document",
                     Map(
                         "dbname" -> myCloudantCreds.dbname.toJson,
                         "doc" -> JsObject("message" -> "This time I didn't use the URL param.".toJson)))) {
