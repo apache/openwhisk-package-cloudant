@@ -62,7 +62,7 @@ class CloudantFeedTests
             }
 
             // create whisk stuff
-            var feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -93,7 +93,7 @@ class CloudantFeedTests
             }
 
             // create whisk stuff
-            var feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -124,7 +124,7 @@ class CloudantFeedTests
             }
 
             // create whisk stuff
-            var feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "username" -> myCloudantCreds.user.toJson,
@@ -155,7 +155,7 @@ class CloudantFeedTests
             }
 
             // create whisk stuff
-            var feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+            val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                 (trigger, name) =>
                     trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                         "password" -> myCloudantCreds.password.toJson,
@@ -204,8 +204,8 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
-            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
+            val ruleName = s"dummyCloudantRule-${System.currentTimeMillis}"
+            val actionName = s"dummyCloudantAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -227,7 +227,7 @@ class CloudantFeedTests
                 }
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                             "username" -> myCloudantCreds.user.toJson,
@@ -245,7 +245,7 @@ class CloudantFeedTests
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_1\"}")
-                response1.get("ok").getAsString() should be("true")
+                response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
                 val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
@@ -254,7 +254,7 @@ class CloudantFeedTests
 
                 println("Creating a test doc-2 in the cloudant")
                 val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_2\"}")
-                response2.get("ok").getAsString() should be("true")
+                response2.get("ok").getAsString should be("true")
 
                 println("No activations should be created for test_doc_2 since trigger is disabled")
                 val newactivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
@@ -270,8 +270,8 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
-            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
+            val ruleName = s"dummyCloudantRule-${System.currentTimeMillis}"
+            val actionName = s"dummyCloudantAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -298,7 +298,7 @@ class CloudantFeedTests
                 getResponse.get("ok").getAsString shouldBe "true"
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                             "username" -> myCloudantCreds.user.toJson,
@@ -317,7 +317,7 @@ class CloudantFeedTests
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
-                response1.get("ok").getAsString() should be("true")
+                response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
                 val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
@@ -326,7 +326,7 @@ class CloudantFeedTests
 
                 println("Creating a test doc-2 in the cloudant")
                 val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"dairy\",\"type\":\"butter\"}")
-                response2.get("ok").getAsString() should be("true")
+                response2.get("ok").getAsString should be("true")
 
                 println("checking for new activations (not expected since it should be filtered out)")
                 val noNewActivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
@@ -335,7 +335,7 @@ class CloudantFeedTests
 
                 println("Creating a test doc-3 in the cloudant")
                 val response3 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"debatable\", \"type\":\"tomato\"}")
-                response3.get("ok").getAsString() should be("true")
+                response3.get("ok").getAsString should be("true")
 
                 println("Checking for new activations (should now have 2)")
                 val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length
@@ -349,8 +349,6 @@ class CloudantFeedTests
     }
 
     it should "not return fields in configuration that are not passed in during trigger create" in withAssetCleaner(wskprops) {
-        val currentTime = s"${System.currentTimeMillis}"
-
         (wp, assetHelper) =>
             implicit val wskProps = wp
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
@@ -360,7 +358,7 @@ class CloudantFeedTests
             try {
                 CloudantUtil.setUp(myCloudantCreds)
 
-                // the package alarms should be there
+                // the package cloudant should be there
                 val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
                 println("fetched package cloudant")
                 packageGetResult.stdout should include("ok")
@@ -422,8 +420,6 @@ class CloudantFeedTests
     }
 
     it should "reject trigger update without passing in any updatable parameters" in withAssetCleaner(wskprops) {
-        val currentTime = s"${System.currentTimeMillis}"
-
         (wp, assetHelper) =>
             implicit val wskProps = wp
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
@@ -433,7 +429,7 @@ class CloudantFeedTests
             try {
                 CloudantUtil.setUp(myCloudantCreds)
 
-                // the package alarms should be there
+                // the package cloudant should be there
                 val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
                 println("fetched package cloudant")
                 packageGetResult.stdout should include("ok")
@@ -477,8 +473,6 @@ class CloudantFeedTests
     }
 
     it should "reject trigger update when query_params is passed in and no filter is defined" in withAssetCleaner(wskprops) {
-        val currentTime = s"${System.currentTimeMillis}"
-
         (wp, assetHelper) =>
             implicit val wskProps = wp
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
@@ -488,7 +482,7 @@ class CloudantFeedTests
             try {
                 CloudantUtil.setUp(myCloudantCreds)
 
-                // the package alarms should be there
+                // the package cloudant should be there
                 val packageGetResult = wsk.pkg.get("/whisk.system/cloudant")
                 println("fetched package cloudant")
                 packageGetResult.stdout should include("ok")
@@ -536,8 +530,8 @@ class CloudantFeedTests
         (wp, assetHelper) =>
             implicit val wskProps = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
-            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
+            val ruleName = s"dummyCloudantRule-${System.currentTimeMillis}"
+            val actionName = s"dummyCloudantAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -564,7 +558,7 @@ class CloudantFeedTests
                 getResponse.get("ok").getAsString shouldBe "true"
 
                 println("Creating cloudant trigger feed.")
-                val feedCreationResult = assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
+                assetHelper.withCleaner(wsk.trigger, triggerName, confirmDelete = false) {
                     (trigger, name) =>
                         trigger.create(name, feed = Some(s"$packageName/$feed"), parameters = Map(
                             "username" -> myCloudantCreds.user.toJson,
@@ -583,7 +577,7 @@ class CloudantFeedTests
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
-                response1.get("ok").getAsString() should be("true")
+                response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
                 val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
@@ -592,7 +586,7 @@ class CloudantFeedTests
 
                 println("Creating a test doc-2 in the cloudant")
                 val response2 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"dairy\",\"type\":\"butter\"}")
-                response2.get("ok").getAsString() should be("true")
+                response2.get("ok").getAsString should be("true")
 
                 println("checking for new activations (not expected since it should be filtered out)")
                 val noNewActivations = wsk.activation.pollFor(N = 2, Some(triggerName)).length
@@ -636,7 +630,7 @@ class CloudantFeedTests
 
                 println("Creating a test doc-3 in the cloudant")
                 val response3 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"berry\", \"type\":\"avocado\"}")
-                response3.get("ok").getAsString() should be("true")
+                response3.get("ok").getAsString should be("true")
 
                 println("Checking for new activations (should now have 2)")
                 val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length

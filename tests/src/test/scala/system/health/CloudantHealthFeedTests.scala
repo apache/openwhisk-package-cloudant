@@ -64,8 +64,8 @@ class CloudantHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
-            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
+            val ruleName = s"dummyCloudantRule-${System.currentTimeMillis}"
+            val actionName = s"dummyCloudantAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 
@@ -134,8 +134,8 @@ class CloudantHealthFeedTests
         (wp, assetHelper) =>
             implicit val wskprops = wp // shadow global props and make implicit
             val triggerName = s"dummyCloudantTrigger-${System.currentTimeMillis}"
-            val ruleName = s"dummyAlarmsRule-${System.currentTimeMillis}"
-            val actionName = s"dummyAlarmsAction-${System.currentTimeMillis}"
+            val ruleName = s"dummyCloudantRule-${System.currentTimeMillis}"
+            val actionName = s"dummyCloudantAction-${System.currentTimeMillis}"
             val packageName = "dummyCloudantPackage"
             val feed = "changes"
 

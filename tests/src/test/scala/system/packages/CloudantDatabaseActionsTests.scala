@@ -490,7 +490,7 @@ class CloudantDatabaseActionsTests extends FlatSpec
                 response.get("ok").getAsString shouldBe "true"
 
                 println("Invoking the delete-document action.")
-                withActivation(wsk.activation, wsk.action.invoke(s"${packageName}/delete-document",
+                withActivation(wsk.activation, wsk.action.invoke(s"$packageName/delete-document",
                     Map("docrev" -> response.get("rev").getAsString.toJson))) {
                     activation =>
                         activation.response.success shouldBe false
