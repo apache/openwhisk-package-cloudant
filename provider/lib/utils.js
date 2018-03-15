@@ -1,25 +1,21 @@
-var _ = require('lodash');
 var request = require('request');
 var HttpStatus = require('http-status-codes');
 var constants = require('./constants.js');
 
+module.exports = function(logger, triggerDB, redisClient) {
 
-module.exports = function(
-  logger,
-  triggerDB,
-  redisClient
-) {
-    this.module = 'utils';
     this.triggers = {};
     this.endpointAuth = process.env.ENDPOINT_AUTH;
     this.routerHost = process.env.ROUTER_HOST || 'localhost';
     this.worker = process.env.WORKER || 'worker0';
     this.host = process.env.HOST_INDEX || 'host0';
-    this.hostMachine = process.env.HOST_MACHINE;
     this.activeHost = 'host0'; //default value on init (will be updated for existing redis)
+    this.db = triggerDB;
     this.redisClient = redisClient;
-    this.redisHash = triggerDB.config.db + '_' + this.worker;
+    this.redisHash = this.db.config.db + '_' + this.worker;
     this.redisKey = constants.REDIS_KEY;
+    this.uriHost ='https://' + this.routerHost + ':443';
+    this.monitorStatus = {};
 
     var retryAttempts = constants.RETRY_ATTEMPTS;
     var filterDDName = constants.FILTERS_DESIGN_DOC;
@@ -56,16 +52,13 @@ module.exports = function(
             utils.triggers[dataTrigger.id] = dataTrigger;
 
             feed.on('change', function (change) {
-                if (utils.activeHost === utils.host) {
+                var triggerHandle = utils.triggers[dataTrigger.id];
+                if (triggerHandle && utils.shouldFireTrigger(triggerHandle) && utils.hasTriggersRemaining(triggerHandle)) {
                     logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
-
-                    var triggerHandle = utils.triggers[dataTrigger.id];
-                    if (triggerHandle && (triggerHandle.maxTriggers === -1 || triggerHandle.triggersLeft > 0)) {
-                        try {
-                            utils.fireTrigger(dataTrigger.id, change);
-                        } catch (e) {
-                            logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id, e);
-                        }
+                    try {
+                        utils.fireTrigger(dataTrigger.id, change);
+                    } catch (e) {
+                        logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id, e);
                     }
                 }
             });
@@ -73,17 +66,15 @@ module.exports = function(
             feed.follow();
 
             return new Promise(function(resolve, reject) {
-
                 feed.on('error', function (err) {
                     logger.error(method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
                     reject(err);
                 });
 
-                feed.on('confirm', function (dbObj) {
+                feed.on('confirm', function () {
                     logger.info(method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
                     resolve(dataTrigger.id);
                 });
-
             });
 
         } catch (err) {
@@ -94,10 +85,6 @@ module.exports = function(
     };
 
     this.initTrigger = function(newTrigger) {
-        var method = 'initTrigger';
-
-        logger.info(method, 'create trigger', newTrigger.id, 'with the following args', newTrigger);
-
         var maxTriggers = newTrigger.maxTriggers || constants.DEFAULT_MAX_TRIGGERS;
 
         var trigger = {
@@ -113,7 +100,8 @@ module.exports = function(
             maxTriggers: maxTriggers,
             triggersLeft: maxTriggers,
             filter: newTrigger.filter,
-            query_params: newTrigger.query_params
+            query_params: newTrigger.query_params,
+            monitor: newTrigger.monitor
         };
 
         return trigger;
@@ -122,6 +110,18 @@ module.exports = function(
     this.shouldDisableTrigger = function(statusCode) {
         return ((statusCode >= 400 && statusCode < 500) &&
             [HttpStatus.REQUEST_TIMEOUT, HttpStatus.TOO_MANY_REQUESTS].indexOf(statusCode) === -1);
+    };
+
+    this.shouldFireTrigger = function(trigger) {
+        return trigger.monitor || utils.activeHost === utils.host;
+    };
+
+    this.hasTriggersRemaining = function(trigger) {
+        return !trigger.maxTriggers || trigger.maxTriggers === -1 || trigger.triggersLeft > 0;
+    };
+
+    this.isMonitoringTrigger = function(monitor, triggerIdentifier) {
+        return monitor && utils.monitorStatus.triggerName === utils.parseQName(triggerIdentifier).name;
     };
 
     this.disableTrigger = function(id, statusCode, message) {
@@ -188,9 +188,12 @@ module.exports = function(
         utils.postTrigger(dataTrigger, form, uri, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
+            if (utils.isMonitoringTrigger(dataTrigger.monitor, triggerId)) {
+                utils.monitorStatus.triggerFired = "success";
+            }
             if (dataTrigger.triggersLeft === 0) {
-                utils.disableTrigger(dataTrigger.id, undefined, 'Automatically disabled after reaching max triggers');
-                logger.warn(method, 'no more triggers left, disabled', dataTrigger.id);
+                utils.disableTrigger(triggerId, undefined, 'Automatically disabled after reaching max triggers');
+                logger.warn(method, 'no more triggers left, disabled', triggerId);
             }
         })
         .catch(err => {
@@ -273,7 +276,7 @@ module.exports = function(
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
-                    if (!(triggerIdentifier in utils.triggers)) {
+                    if (!(triggerIdentifier in utils.triggers) && !doc.monitor) {
                         //check if trigger still exists in whisk db
                         var triggerObj = utils.parseQName(triggerIdentifier);
                         var host = 'https://' + utils.routerHost + ':' + 443;
@@ -330,19 +333,23 @@ module.exports = function(
                 var triggerIdentifier = change.id;
                 var doc = change.doc;
 
-                logger.info(method, 'got change for trigger', triggerIdentifier);
-
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
                         utils.deleteTrigger(triggerIdentifier);
+                        if (utils.isMonitoringTrigger(doc.monitor, triggerIdentifier)) {
+                            utils.monitorStatus.triggerStopped = "success";
+                        }
                     }
                 }
                 else {
                     //ignore changes to disabled triggers
-                    if (!doc.status || doc.status.active === true) {
+                    if ((!doc.status || doc.status.active === true) && (!doc.monitor || doc.monitor === utils.host)) {
                         utils.createTrigger(utils.initTrigger(doc))
                         .then(triggerIdentifier => {
                             logger.info(method, triggerIdentifier, 'created successfully');
+                            if (utils.isMonitoringTrigger(doc.monitor, triggerIdentifier)) {
+                                utils.monitorStatus.triggerStarted = "success";
+                            }
                         })
                         .catch(err => {
                             var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
@@ -368,7 +375,6 @@ module.exports = function(
         var method = 'authorize';
 
         if (utils.endpointAuth) {
-
             if (!req.headers.authorization) {
                 res.set('www-authenticate', 'Basic realm="Private"');
                 res.status(HttpStatus.UNAUTHORIZED);
@@ -388,9 +394,7 @@ module.exports = function(
 
             var uuid = auth[1];
             var key = auth[2];
-
             var endpointAuth = utils.endpointAuth.split(':');
-
             if (endpointAuth[0] === uuid && endpointAuth[1] === key) {
                 next();
             }

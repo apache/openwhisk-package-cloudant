@@ -25,7 +25,6 @@ app.set('port', process.env.PORT || 8080);
 // Allow invoking servers with self-signed certificates.
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-
 // If it does not already exist, create the triggers database.  This is the database that will
 // store the managed triggers.
 var dbUsername = process.env.DB_USERNAME;
@@ -35,6 +34,8 @@ var dbProtocol = process.env.DB_PROTOCOL;
 var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
 var redisUrl = process.env.REDIS_URL;
+var monitoringAuth = process.env.MONITORING_AUTH;
+var monitoringInterval = process.env.MONITORING_INTERVAL;
 var filterDDName = '_design/' + constants.FILTERS_DESIGN_DOC;
 var viewDDName = '_design/' + constants.VIEWS_DESIGN_DOC;
 
@@ -74,7 +75,7 @@ function createDatabase() {
                 };
 
                 createDesignDoc(nano.db.use(databaseName), viewDDName, viewDD)
-                .then((db) => {
+                .then(db => {
                     var filterDD = {
                         filters: {
                             triggers_by_worker:
@@ -85,6 +86,22 @@ function createDatabase() {
                         }
                     };
                     return createDesignDoc(db, filterDDName, filterDD);
+                })
+                .then(db => {
+                    if (monitoringAuth) {
+                        var filterDD = {
+                            filters: {
+                                canary_docs:
+                                    function (doc, req) {
+                                        return doc.isCanaryDoc && doc.host === req.query.host;
+                                    }.toString()
+                            }
+                        };
+                        return createDesignDoc(db, '_design/' + constants.MONITOR_DESIGN_DOC, filterDD);
+                    }
+                    else {
+                        return Promise.resolve(db);
+                    }
                 })
                 .then((db) => {
                     resolve(db);
@@ -146,7 +163,6 @@ function createRedisClient() {
                 client = redis.createClient(redisUrl);
             }
 
-
             client.on('connect', function () {
                 resolve(client);
             });
@@ -187,7 +203,7 @@ function init(server) {
     })
     .then(() => {
         var providerRAS = new ProviderRAS();
-        var providerHealth = new ProviderHealth(providerUtils);
+        var providerHealth = new ProviderHealth(logger, providerUtils);
         var providerActivation = new ProviderActivation(logger, providerUtils);
 
         // RAS Endpoint
@@ -200,6 +216,12 @@ function init(server) {
         app.get(providerActivation.endPoint, providerUtils.authorize, providerActivation.active);
 
         providerUtils.initAllTriggers();
+
+        if (monitoringAuth) {
+            setInterval(function () {
+                providerHealth.monitor(monitoringAuth);
+            }, monitoringInterval || constants.MONITOR_INTERVAL);
+        }
     })
     .catch(err => {
         logger.error(method, 'an error occurred creating database:', err);
