@@ -48,6 +48,9 @@ function main(params) {
                 catch (e) {
                     return sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.');
                 }
+                if (typeof query_params !== 'object') {
+                    return sendError(400, 'The query_params parameter is not valid JSON');
+                }
             }
         }
         else if (params.query_params) {
@@ -168,6 +171,9 @@ function main(params) {
                                 }
                                 catch (e) {
                                     reject(sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.'));
+                                }
+                                if (typeof updatedParams.query_params !== 'object') {
+                                    reject(sendError(400, 'The query_params parameter is not valid JSON'));
                                 }
                             }
                         } else {
