@@ -38,19 +38,17 @@ function main(params) {
         var query_params;
 
         if (params.filter) {
-            if (typeof params.query_params === 'object') {
-                query_params = params.query_params;
-            }
-            else if (typeof params.query_params === 'string') {
+            query_params = params.query_params;
+            if (typeof queryParams === 'string') {
                 try {
                     query_params = JSON.parse(params.query_params);
                 }
                 catch (e) {
                     return sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.');
                 }
-                if (typeof query_params !== 'object') {
-                    return sendError(400, 'The query_params parameter is not valid JSON');
-                }
+            }
+            if (typeof query_params !== 'object') {
+                return sendError(400, 'The query_params parameter is not valid JSON');
             }
         }
         else if (params.query_params) {
@@ -162,20 +160,19 @@ function main(params) {
                     }
                     if (params.query_params) {
                         if (updatedParams.filter) {
-                            if (typeof params.query_params === 'object') {
-                                updatedParams.query_params = params.query_params;
-                            }
-                            else if (typeof params.query_params === 'string') {
+                            var query_params = params.query_params;
+                            if (typeof query_params === 'string') {
                                 try {
-                                    updatedParams.query_params = JSON.parse(params.query_params);
+                                    query_params = JSON.parse(params.query_params);
                                 }
                                 catch (e) {
                                     reject(sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.'));
                                 }
-                                if (typeof updatedParams.query_params !== 'object') {
-                                    reject(sendError(400, 'The query_params parameter is not valid JSON'));
-                                }
                             }
+                            if (typeof query_params !== 'object') {
+                                reject(sendError(400, 'The query_params parameter is not valid JSON'));
+                            }
+                            updatedParams.query_params = query_params;
                         } else {
                             reject(sendError(400, 'The query_params parameter is only allowed if the filter parameter is defined'));
                         }
