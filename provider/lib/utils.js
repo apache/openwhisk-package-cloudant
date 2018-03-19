@@ -73,6 +73,9 @@ module.exports = function(logger, triggerDB, redisClient) {
 
                 feed.on('confirm', function () {
                     logger.info(method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
+                    if (utils.isMonitoringTrigger(dataTrigger.monitor, dataTrigger.id)) {
+                        utils.monitorStatus.triggerStarted = "success";
+                    }
                     resolve(dataTrigger.id);
                 });
             });
@@ -100,8 +103,7 @@ module.exports = function(logger, triggerDB, redisClient) {
             maxTriggers: maxTriggers,
             triggersLeft: maxTriggers,
             filter: newTrigger.filter,
-            query_params: newTrigger.query_params,
-            monitor: newTrigger.monitor
+            query_params: newTrigger.query_params
         };
 
         return trigger;
@@ -157,7 +159,7 @@ module.exports = function(logger, triggerDB, redisClient) {
     };
 
     // Delete a trigger: stop listening for changes and remove it.
-    this.deleteTrigger = function(triggerIdentifier) {
+    this.deleteTrigger = function(triggerIdentifier, isMonitoringTrigger) {
         var method = 'deleteTrigger';
 
         if (utils.triggers[triggerIdentifier]) {
@@ -167,6 +169,10 @@ module.exports = function(logger, triggerDB, redisClient) {
 
             delete utils.triggers[triggerIdentifier];
             logger.info(method, 'trigger', triggerIdentifier, 'successfully deleted from memory');
+
+            if (utils.isMonitoringTrigger(isMonitoringTrigger, triggerIdentifier)) {
+                utils.monitorStatus.triggerStopped = "success";
+            }
         }
     };
 
@@ -192,8 +198,13 @@ module.exports = function(logger, triggerDB, redisClient) {
                 utils.monitorStatus.triggerFired = "success";
             }
             if (dataTrigger.triggersLeft === 0) {
-                utils.disableTrigger(triggerId, undefined, 'Automatically disabled after reaching max triggers');
-                logger.warn(method, 'no more triggers left, disabled', triggerId);
+                if (dataTrigger.monitor) {
+                    utils.deleteTrigger(triggerId, dataTrigger.monitor);
+                }
+                else {
+                    utils.disableTrigger(triggerId, undefined, 'Automatically disabled after reaching max triggers');
+                    logger.warn(method, 'no more triggers left, disabled', triggerId);
+                }
             }
         })
         .catch(err => {
@@ -276,7 +287,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                     var triggerIdentifier = trigger.id;
                     var doc = trigger.doc;
 
-                    if (!(triggerIdentifier in utils.triggers) && !doc.monitor) {
+                    if (!(triggerIdentifier in utils.triggers)) {
                         //check if trigger still exists in whisk db
                         var triggerObj = utils.parseQName(triggerIdentifier);
                         var host = 'https://' + utils.routerHost + ':' + 443;
@@ -336,20 +347,14 @@ module.exports = function(logger, triggerDB, redisClient) {
                 if (utils.triggers[triggerIdentifier]) {
                     if (doc.status && doc.status.active === false) {
                         utils.deleteTrigger(triggerIdentifier);
-                        if (utils.isMonitoringTrigger(doc.monitor, triggerIdentifier)) {
-                            utils.monitorStatus.triggerStopped = "success";
-                        }
                     }
                 }
                 else {
                     //ignore changes to disabled triggers
-                    if ((!doc.status || doc.status.active === true) && (!doc.monitor || doc.monitor === utils.host)) {
+                    if (!doc.status || doc.status.active === true) {
                         utils.createTrigger(utils.initTrigger(doc))
                         .then(triggerIdentifier => {
                             logger.info(method, triggerIdentifier, 'created successfully');
-                            if (utils.isMonitoringTrigger(doc.monitor, triggerIdentifier)) {
-                                utils.monitorStatus.triggerStarted = "success";
-                            }
                         })
                         .catch(err => {
                             var message = 'Automatically disabled after receiving exception on create trigger: ' + err;
