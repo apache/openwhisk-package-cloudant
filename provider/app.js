@@ -35,7 +35,7 @@ var dbPrefix = process.env.DB_PREFIX;
 var databaseName = dbPrefix + constants.TRIGGER_DB_SUFFIX;
 var redisUrl = process.env.REDIS_URL;
 var monitoringAuth = process.env.MONITORING_AUTH;
-var monitoringInterval = process.env.MONITORING_INTERVAL;
+var monitoringInterval = process.env.MONITORING_INTERVAL || constants.MONITOR_INTERVAL;
 var filterDDName = '_design/' + constants.FILTERS_DESIGN_DOC;
 var viewDDName = '_design/' + constants.VIEWS_DESIGN_DOC;
 
@@ -219,8 +219,8 @@ function init(server) {
 
         if (monitoringAuth) {
             setInterval(function () {
-                providerHealth.monitor(monitoringAuth);
-            }, monitoringInterval || constants.MONITOR_INTERVAL);
+                providerHealth.monitor(monitoringAuth, monitoringInterval);
+            }, monitoringInterval);
         }
     })
     .catch(err => {

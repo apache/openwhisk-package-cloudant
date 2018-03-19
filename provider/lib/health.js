@@ -45,7 +45,7 @@ module.exports = function(logger, utils) {
         });
     };
 
-    this.monitor = function(apikey) {
+    this.monitor = function(apikey, monitoringInterval) {
         var method = 'monitor';
 
         var auth = apikey.split(':');
@@ -62,9 +62,6 @@ module.exports = function(logger, utils) {
             }
             var existingTriggerID = `:_:${triggerName}`;
             var existingCanaryID = canaryDocID;
-
-            //delete trigger feed from database
-            healthMonitor.deleteDocFromDB(existingTriggerID, 0);
 
             //delete the trigger
             var uri = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
@@ -89,7 +86,14 @@ module.exports = function(logger, utils) {
         .then(info => {
             logger.info(method, triggerID, info);
             var newTrigger = healthMonitor.createCloudantTrigger(triggerID, apikey);
-            healthMonitor.createDocInDB(triggerID, newTrigger);
+            utils.createTrigger(newTrigger);
+            setTimeout(function () {
+                var canaryDoc = {
+                    isCanaryDoc: true,
+                    host: utils.host
+                };
+                healthMonitor.createDocInDB(canaryDocID, canaryDoc);
+            }, monitoringInterval / 3);
         })
         .catch(err => {
             logger.error(method, triggerID, err);
@@ -114,6 +118,8 @@ module.exports = function(logger, utils) {
             filter: constants.MONITOR_DESIGN_DOC + '/' + constants.DOCS_FOR_MONITOR,
             query_params: {host: utils.host},
             maxTriggers: 1,
+            triggersLeft: 1,
+            since: 'now',
             worker: utils.worker,
             monitor: utils.host
         };
@@ -151,15 +157,6 @@ module.exports = function(logger, utils) {
         utils.db.insert(doc, docID, function (err) {
             if (!err) {
                 logger.info(method, docID, 'was successfully inserted');
-                if (doc.monitor) {
-                    setTimeout(function () {
-                        var canaryDoc = {
-                            isCanaryDoc: true,
-                            host: utils.host
-                        };
-                        healthMonitor.createDocInDB(canaryDocID, canaryDoc);
-                    }, 1000 * 60);
-                }
             }
             else {
                 logger.error(method, docID, err);
