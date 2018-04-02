@@ -47,8 +47,8 @@ function main(params) {
                     return sendError(400, 'The query_params parameter cannot be parsed. Ensure it is valid JSON.');
                 }
             }
-            if (typeof query_params !== 'object') {
-                return sendError(400, 'The query_params parameter is not valid JSON');
+            if (query_params && typeof query_params !== 'object') {
+                return sendError(400, 'The query_params parameter is not a valid JSON Object');
             }
         }
         else if (params.query_params) {
@@ -170,7 +170,7 @@ function main(params) {
                                 }
                             }
                             if (typeof query_params !== 'object') {
-                                reject(sendError(400, 'The query_params parameter is not valid JSON'));
+                                reject(sendError(400, 'The query_params parameter is not a valid JSON Object'));
                             }
                             updatedParams.query_params = query_params;
                         } else {

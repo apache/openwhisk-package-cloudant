@@ -12,6 +12,7 @@ env:
     - secure: "c2PoumiBu9Q0ko31/azS8aml2hjv9pPIURxnNfKFWnru0UxXW/F06XAuzyfiBUSXcWgZ+mV2aOj+Fyjr67d1GCtcb8w3lVbaubdlDp+HQQ4iIz0YcTR6FZgLT3iQNVYqZEfmu4/98aeQozmLHbzXHbrw/Dv2PgGTRTrcZuMIb758SI3rFeA87IN4FtotvPXEqQa5w3GGNiFEWOrswKE2bVpeW8IKmdnlX+QCbBBHUoNcHlz93SPBfmbz2IBMV0eWtqw+zAAH6iynIetoxPnBz+mNdyEKRHNGmj3hsJsyN7KPI0ZhVLbxO6qAeaXdaH6Lq/HwFom8eRg2jY5utyeyovvx/EvhuPQHTxQqZu6giaJPkRYVAfr4hLCVjObgpCa1/jq6nYDPTcY74sA2iX1p2UYkjTo46WBr9Fq82BTrVgT2vp8OTvFXh+oiE9Z8Li0NCgSu0Aps8yUwmpZROTc63yjHslYdNVMn+2tVjKRRkO/6gTVdUKz+vlABE2vI/kK1f6Fc7wX/nYdMhgLuLdwKJdWURRGAQchzcBhBlpOFUtXKznJGsk6OUISr2qo0aGpKL2ajj5IEpyAELBLw6YPH2+hO5uoqb5RMMroP7qb6XkLaqia679SErppSwFdzaqAzbgHC/SDlLGP0zIwWhPwBzCNT6YzrEsxO3+nBEX+9x/E="
 
 before_install:
+  - npm conf set strict-ssl false
   - ./tools/travis/setup.sh
 
 install: true
