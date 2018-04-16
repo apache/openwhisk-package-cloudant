@@ -22,10 +22,8 @@ import org.junit.runner.RunWith
 import org.scalatest.{BeforeAndAfterEach, FlatSpec, Inside}
 import org.scalatest.junit.JUnitRunner
 import common._
-import spray.json.DefaultJsonProtocol.IntJsonFormat
-import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.DefaultJsonProtocol.BooleanJsonFormat
-import spray.json.{JsObject, JsString, pimpAny}
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 import system.CloudantUtil
 
 /**

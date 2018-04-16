@@ -20,8 +20,8 @@ import common.{TestHelpers, Wsk, WskProps, WskTestHelpers}
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.StringJsonFormat
-import spray.json.{JsObject, pimpAny}
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 import system.CloudantUtil
 
 @RunWith(classOf[JUnitRunner])
