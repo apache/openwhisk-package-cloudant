@@ -22,8 +22,8 @@ import common._
 import org.junit.runner.RunWith
 import org.scalatest.FlatSpec
 import org.scalatest.junit.JUnitRunner
-import spray.json.DefaultJsonProtocol.{ByteJsonFormat, StringJsonFormat}
-import spray.json.{JsArray, JsBoolean, JsNumber, JsObject, JsString, pimpAny, pimpString}
+import spray.json.DefaultJsonProtocol._
+import spray.json._
 import system.CloudantUtil
 import whisk.utils.JsHelpers
 
