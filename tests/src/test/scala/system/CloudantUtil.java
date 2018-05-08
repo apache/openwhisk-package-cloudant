@@ -20,7 +20,6 @@ import com.cloudant.client.api.CloudantClient;
 import com.cloudant.client.api.Database;
 import com.google.gson.*;
 import com.jayway.restassured.response.Response;
-import common.Pair;
 import common.TestUtils;
 
 import java.io.*;
@@ -53,8 +52,17 @@ public class CloudantUtil {
     public static final File VIEW_AND_SEARCH_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/searchdesigndoc.txt");
     public static final File FILTER_DDOC_PATH = getFileRelativeToCloudantHome("tests/dat/filterdesigndoc.txt");
 
-
     private static Gson gson = new Gson();
+
+    private static class ResponsePair {
+        public final Integer fst;
+        public final JsonObject snd;
+
+        public ResponsePair(Integer a, JsonObject b) {
+            this.fst = a;
+            this.snd = b;
+        }
+    }
 
     public static class Credential {
         public final String user;
@@ -96,7 +104,7 @@ public class CloudantUtil {
         deleteTestDatabase(credential);
         for (int i = 0; i < 5; i++) {
             try {
-                Pair<Integer, JsonObject> response = CloudantUtil.createTestDatabase(credential, false);
+                ResponsePair response = CloudantUtil.createTestDatabase(credential, false);
                 if (response.fst == 201)
                     return;
                 // respond code is sometimes not 201 but still ok
@@ -147,11 +155,11 @@ public class CloudantUtil {
      *
      * @throws UnsupportedEncodingException
      */
-    public static Pair<Integer, JsonObject> createTestDatabase(Credential credential) throws UnsupportedEncodingException {
+    public static ResponsePair createTestDatabase(Credential credential) throws UnsupportedEncodingException {
         return createTestDatabase(credential, true);
     }
 
-    private static Pair<Integer, JsonObject> createTestDatabase(Credential credential, boolean failIfCannotCreate) throws UnsupportedEncodingException {
+    private static ResponsePair createTestDatabase(Credential credential, boolean failIfCannotCreate) throws UnsupportedEncodingException {
         // Use PUT to create the database.
         // This could fail if the database already exists, but that's ok.
         String dbName = credential.dbname;
@@ -160,7 +168,7 @@ public class CloudantUtil {
         System.out.format("Response of create database %s: %s\n", dbName, response.asString());
         if (failIfCannotCreate)
             assertTrue("failed to create database " + dbName, response.statusCode() == 201 || response.statusCode() == 202);
-        return Pair.make(response.statusCode(), (JsonObject) new JsonParser().parse(response.asString()));
+        return new ResponsePair(response.statusCode(), (JsonObject) new JsonParser().parse(response.asString()));
     }
 
     /**

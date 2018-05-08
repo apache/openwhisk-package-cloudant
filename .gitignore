@@ -2,3 +2,5 @@
 build/
 node_modules/
 action/*.zip
+.idea
+*.iml
