@@ -14,7 +14,6 @@ module.exports = function(logger, utils) {
     var canaryDocID;
     var monitorStatus;
     var monitorStages = ['triggerStarted', 'triggerFired', 'triggerStopped'];
-    var healthMonitor = this;
 
     // Health Logic
     this.health = function (req, res) {
@@ -65,10 +64,10 @@ module.exports = function(logger, utils) {
 
             //delete the trigger
             var uri = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
-            healthMonitor.deleteTrigger(existingTriggerID, uri, auth, 0);
+            deleteTrigger(existingTriggerID, uri, auth, 0);
 
             //delete the canary doc
-            healthMonitor.deleteDocFromDB(existingCanaryID, 0);
+            deleteDocFromDB(existingCanaryID, 0);
         }
 
         //create new cloudant trigger and canary doc
@@ -82,17 +81,17 @@ module.exports = function(logger, utils) {
 
         var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
         var triggerID = `:_:${triggerName}`;
-        healthMonitor.createTrigger(triggerURL, auth)
+        createTrigger(triggerURL, auth)
         .then(info => {
             logger.info(method, triggerID, info);
-            var newTrigger = healthMonitor.createCloudantTrigger(triggerID, apikey);
+            var newTrigger = createCloudantTrigger(triggerID, apikey);
             utils.createTrigger(newTrigger);
             setTimeout(function () {
                 var canaryDoc = {
                     isCanaryDoc: true,
                     host: utils.host
                 };
-                healthMonitor.createDocInDB(canaryDocID, canaryDoc);
+                createDocInDB(canaryDocID, canaryDoc);
             }, monitoringInterval / 3);
         })
         .catch(err => {
@@ -100,7 +99,7 @@ module.exports = function(logger, utils) {
         });
     };
 
-    this.createCloudantTrigger = function(triggerID, apikey) {
+    function createCloudantTrigger(triggerID, apikey) {
         var method = 'createCloudantTrigger';
 
         var dbURL = new URL(utils.db.config.url);
@@ -125,9 +124,9 @@ module.exports = function(logger, utils) {
         };
 
         return newTrigger;
-    };
+    }
 
-    this.createTrigger = function(triggerURL, auth) {
+    function createTrigger(triggerURL, auth) {
         var method = 'createTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -149,9 +148,9 @@ module.exports = function(logger, utils) {
                 }
             });
         });
-    };
+    }
 
-    this.createDocInDB = function(docID, doc) {
+    function createDocInDB(docID, doc) {
         var method = 'createDocInDB';
 
         utils.db.insert(doc, docID, function (err) {
@@ -162,9 +161,9 @@ module.exports = function(logger, utils) {
                 logger.error(method, docID, err);
             }
         });
-    };
+    }
 
-    this.deleteTrigger = function(triggerID, uri, auth, retryCount) {
+    function deleteTrigger(triggerID, uri, auth, retryCount) {
         var method = 'deleteTrigger';
 
         request({
@@ -180,7 +179,7 @@ module.exports = function(logger, utils) {
                 if (!error && response.statusCode === 409 && retryCount < 5) {
                     logger.info(method, 'attempting to delete trigger again', triggerID, 'Retry Count:', (retryCount + 1));
                     setTimeout(function () {
-                        healthMonitor.deleteTrigger(triggerID, uri, auth, (retryCount + 1));
+                        deleteTrigger(triggerID, uri, auth, (retryCount + 1));
                     }, 1000);
                 } else {
                     logger.error(method, triggerID, 'trigger delete request failed');
@@ -190,9 +189,9 @@ module.exports = function(logger, utils) {
                 logger.info(method, triggerID, 'trigger delete request was successful');
             }
         });
-    };
+    }
 
-    this.deleteDocFromDB = function(docID, retryCount) {
+    function deleteDocFromDB(docID, retryCount) {
         var method = 'deleteDocFromDB';
 
         //delete from database
@@ -202,7 +201,7 @@ module.exports = function(logger, utils) {
                     if (err) {
                         if (err.statusCode === 409 && retryCount < 5) {
                             setTimeout(function () {
-                                healthMonitor.deleteDocFromDB(docID, (retryCount + 1));
+                                deleteDocFromDB(docID, (retryCount + 1));
                             }, 1000);
                         }
                         else {
@@ -218,6 +217,6 @@ module.exports = function(logger, utils) {
                 logger.error(method, docID, 'could not be found in the database');
             }
         });
-    };
+    }
 
 };
