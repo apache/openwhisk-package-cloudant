@@ -4,3 +4,11 @@ node_modules/
 action/*.zip
 .idea
 *.iml
+
+# Eclipse
+bin/
+**/.project
+.settings/
+.classpath
+.cache-main
+.cache-tests
