@@ -91,7 +91,7 @@ function main(params) {
                  resolve({
                      statusCode: 200,
                      headers: {'Content-Type': 'application/json'},
-                     body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
+                     body: {'status': 'success'}
                  });
             })
             .catch(err => {
@@ -131,7 +131,7 @@ function main(params) {
                 resolve({
                     statusCode: 200,
                     headers: {'Content-Type': 'application/json'},
-                    body: new Buffer(JSON.stringify(body)).toString('base64')
+                    body: body
                 });
             })
             .catch(err => {
@@ -186,7 +186,7 @@ function main(params) {
                 resolve({
                     statusCode: 200,
                     headers: {'Content-Type': 'application/json'},
-                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
+                    body: {'status': 'success'}
                 });
            })
            .catch(err => {
@@ -208,7 +208,7 @@ function main(params) {
                 resolve({
                     statusCode: 200,
                     headers: {'Content-Type': 'application/json'},
-                    body: new Buffer(JSON.stringify({'status': 'success'})).toString('base64')
+                    body: {'status': 'success'}
                 });
             })
             .catch(err => {
@@ -468,7 +468,7 @@ function sendError(statusCode, error, message) {
     return {
         statusCode: statusCode,
         headers: { 'Content-Type': 'application/json' },
-        body: new Buffer(JSON.stringify(params)).toString('base64')
+        body: params
     };
 }
 
