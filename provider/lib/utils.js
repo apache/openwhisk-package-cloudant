@@ -1,6 +1,7 @@
 var request = require('request');
 var HttpStatus = require('http-status-codes');
 var constants = require('./constants.js');
+var authHandler = require('./authHandler');
 
 module.exports = function(logger, triggerDB, redisClient) {
 
@@ -26,41 +27,41 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.monitorStatus = {};
 
     // Add a trigger: listen for changes and dispatch.
-    this.createTrigger = function(dataTrigger) {
+    this.createTrigger = function(triggerData) {
         var method = 'createTrigger';
 
         // both couch and cloudant should have their URLs in the username:password@host format
-        var dbURL = `${dataTrigger.protocol}://${dataTrigger.user}:${dataTrigger.pass}@${dataTrigger.host}`;
+        var dbURL = `${triggerData.protocol}://${triggerData.user}:${triggerData.pass}@${triggerData.host}`;
 
         // add port if specified
-        if (dataTrigger.port) {
-            dbURL += ':' + dataTrigger.port;
+        if (triggerData.port) {
+            dbURL += ':' + triggerData.port;
         }
 
         try {
             var nanoConnection = require('cloudant-nano')(dbURL);
-            var triggeredDB = nanoConnection.use(dataTrigger.dbname);
+            var triggeredDB = nanoConnection.use(triggerData.dbname);
 
             // Listen for changes on this database.
-            var feed = triggeredDB.follow({since: dataTrigger.since, include_docs: false});
-            if (dataTrigger.filter) {
-                feed.filter = dataTrigger.filter;
+            var feed = triggeredDB.follow({since: triggerData.since, include_docs: false});
+            if (triggerData.filter) {
+                feed.filter = triggerData.filter;
             }
-            if (dataTrigger.query_params) {
-                feed.query_params = dataTrigger.query_params;
+            if (triggerData.query_params) {
+                feed.query_params = triggerData.query_params;
             }
 
-            dataTrigger.feed = feed;
-            self.triggers[dataTrigger.id] = dataTrigger;
+            triggerData.feed = feed;
+            self.triggers[triggerData.id] = triggerData;
 
             feed.on('change', function (change) {
-                var triggerHandle = self.triggers[dataTrigger.id];
+                var triggerHandle = self.triggers[triggerData.id];
                 if (triggerHandle && shouldFireTrigger(triggerHandle) && hasTriggersRemaining(triggerHandle)) {
-                    logger.info(method, 'Trigger', dataTrigger.id, 'got change from', dataTrigger.dbname);
+                    logger.info(method, 'Trigger', triggerData.id, 'got change from', triggerData.dbname);
                     try {
-                        fireTrigger(dataTrigger.id, change);
+                        fireTrigger(triggerData.id, change);
                     } catch (e) {
-                        logger.error(method, 'Exception occurred while firing trigger', dataTrigger.id, e);
+                        logger.error(method, 'Exception occurred while firing trigger', triggerData.id, e);
                     }
                 }
             });
@@ -69,21 +70,21 @@ module.exports = function(logger, triggerDB, redisClient) {
 
             return new Promise(function(resolve, reject) {
                 feed.on('error', function (err) {
-                    logger.error(method,'Error occurred for trigger', dataTrigger.id, '(db ' + dataTrigger.dbname + '):', err);
+                    logger.error(method,'Error occurred for trigger', triggerData.id, '(db ' + triggerData.dbname + '):', err);
                     reject(err);
                 });
 
                 feed.on('confirm', function () {
-                    logger.info(method, 'Added cloudant data trigger', dataTrigger.id, 'listening for changes in database', dataTrigger.dbname);
-                    if (isMonitoringTrigger(dataTrigger.monitor, dataTrigger.id)) {
+                    logger.info(method, 'Added cloudant data trigger', triggerData.id, 'listening for changes in database', triggerData.dbname);
+                    if (isMonitoringTrigger(triggerData.monitor, triggerData.id)) {
                         self.monitorStatus.triggerStarted = "success";
                     }
-                    resolve(dataTrigger.id);
+                    resolve(triggerData.id);
                 });
             });
 
         } catch (err) {
-            logger.info(method, 'caught an exception for trigger', dataTrigger.id, err);
+            logger.info(method, 'caught an exception for trigger', triggerData.id, err);
             return Promise.reject(err);
         }
 
@@ -105,7 +106,8 @@ module.exports = function(logger, triggerDB, redisClient) {
             maxTriggers: maxTriggers,
             triggersLeft: maxTriggers,
             filter: newTrigger.filter,
-            query_params: newTrigger.query_params
+            query_params: newTrigger.query_params,
+            additionalData: newTrigger.additionalData
         };
 
         return trigger;
@@ -181,27 +183,27 @@ module.exports = function(logger, triggerDB, redisClient) {
     function fireTrigger(triggerIdentifier, change) {
         var method = 'fireTrigger';
 
-        var dataTrigger = self.triggers[triggerIdentifier];
-        var triggerObj = parseQName(dataTrigger.id);
+        var triggerData = self.triggers[triggerIdentifier];
+        var triggerObj = parseQName(triggerData.id);
 
         var form = change;
-        form.dbname = dataTrigger.dbname;
+        form.dbname = triggerData.dbname;
 
-        logger.info(method, 'firing trigger', dataTrigger.id, 'with db update');
+        logger.info(method, 'firing trigger', triggerData.id, 'with db update');
 
         var host = 'https://' + self.routerHost + ':' + 443;
         var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-        var auth = dataTrigger.apikey.split(':');
+        var auth = triggerData.apikey.split(':');
 
-        postTrigger(dataTrigger, form, uri, auth, 0)
+        postTrigger(triggerData, form, uri, auth, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
-            if (isMonitoringTrigger(dataTrigger.monitor, triggerId)) {
+            if (isMonitoringTrigger(triggerData.monitor, triggerId)) {
                 self.monitorStatus.triggerFired = "success";
             }
-            if (dataTrigger.triggersLeft === 0) {
-                if (dataTrigger.monitor) {
-                    deleteTrigger(triggerId, dataTrigger.monitor);
+            if (triggerData.triggersLeft === 0) {
+                if (triggerData.monitor) {
+                    deleteTrigger(triggerId, triggerData.monitor);
                 }
                 else {
                     disableTrigger(triggerId, undefined, 'Automatically disabled after reaching max triggers');
@@ -214,45 +216,41 @@ module.exports = function(logger, triggerDB, redisClient) {
         });
     }
 
-    function postTrigger(dataTrigger, form, uri, auth, retryCount) {
+    function postTrigger(triggerData, form, uri, auth, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
 
             // only manage trigger fires if they are not infinite
-            if (dataTrigger.maxTriggers !== -1) {
-                dataTrigger.triggersLeft--;
+            if (triggerData.maxTriggers !== -1) {
+                triggerData.triggersLeft--;
             }
 
-            request({
+            self.authRequest(triggerData, {
                 method: 'post',
                 uri: uri,
-                auth: {
-                    user: auth[0],
-                    pass: auth[1]
-                },
                 json: form
             }, function(error, response) {
                 try {
-                    logger.info(method, dataTrigger.id, 'http post request, STATUS:', response ? response.statusCode : response);
+                    logger.info(method, triggerData.id, 'http post request, STATUS:', response ? response.statusCode : response);
                     if (error || response.statusCode >= 400) {
                         // only manage trigger fires if they are not infinite
-                        if (dataTrigger.maxTriggers !== -1) {
-                            dataTrigger.triggersLeft++;
+                        if (triggerData.maxTriggers !== -1) {
+                            triggerData.triggersLeft++;
                         }
-                        logger.error(method, 'there was an error invoking', dataTrigger.id, response ? response.statusCode : error);
+                        logger.error(method, 'there was an error invoking', triggerData.id, response ? response.statusCode : error);
                         if (!error && shouldDisableTrigger(response.statusCode)) {
                             //disable trigger
                             var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
-                            disableTrigger(dataTrigger.id, response.statusCode, message);
-                            reject('Disabled trigger ' + dataTrigger.id + ' due to status code: ' + response.statusCode);
+                            disableTrigger(triggerData.id, response.statusCode, message);
+                            reject('Disabled trigger ' + triggerData.id + ' due to status code: ' + response.statusCode);
                         }
                         else {
                             if (retryCount < retryAttempts ) {
                                 var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
-                                logger.info(method, 'attempting to fire trigger again', dataTrigger.id, 'Retry Count:', (retryCount + 1));
+                                logger.info(method, 'attempting to fire trigger again', triggerData.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    postTrigger(dataTrigger, form, uri, auth, (retryCount + 1))
+                                    postTrigger(triggerData, form, uri, auth, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     })
@@ -261,12 +259,12 @@ module.exports = function(logger, triggerDB, redisClient) {
                                     });
                                 }, timeout);
                             } else {
-                                reject('Unable to reach server to fire trigger ' + dataTrigger.id);
+                                reject('Unable to reach server to fire trigger ' + triggerData.id);
                             }
                         }
                     } else {
-                        logger.info(method, 'fired', dataTrigger.id, dataTrigger.triggersLeft, 'triggers left');
-                        resolve(dataTrigger.id);
+                        logger.info(method, 'fired', triggerData.id, triggerData.triggersLeft, 'triggers left');
+                        resolve(triggerData.id);
                     }
                 }
                 catch(err) {
@@ -294,16 +292,11 @@ module.exports = function(logger, triggerDB, redisClient) {
                         var triggerObj = parseQName(triggerIdentifier);
                         var host = 'https://' + self.routerHost + ':' + 443;
                         var triggerURL = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-                        var auth = doc.apikey.split(':');
 
                         logger.info(method, 'Checking if trigger', triggerIdentifier, 'still exists');
-                        request({
+                        self.authRequest(doc, {
                             method: 'get',
-                            url: triggerURL,
-                            auth: {
-                                user: auth[0],
-                                pass: auth[1]
-                            }
+                            url: triggerURL
                         }, function (error, response) {
                             //disable trigger in database if trigger is dead
                             if (!error && shouldDisableTrigger(response.statusCode)) {
@@ -498,5 +491,19 @@ module.exports = function(logger, triggerDB, redisClient) {
             return Promise.resolve();
         }
     }
+
+    this.authRequest = function(triggerData, options, cb) {
+        var method = 'authRequest';
+
+        authHandler.handleAuth(triggerData)
+        .then(auth => {
+            options.auth = auth;
+            request(options, cb);
+        })
+        .catch(err => {
+            logger.error(method, err);
+            request(options, cb);
+        });
+    };
 
 };
