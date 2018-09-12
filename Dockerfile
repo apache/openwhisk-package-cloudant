@@ -14,8 +14,8 @@ RUN apt-get update --fix-missing && \
   apt-get install -y nodejs
 
 # only package.json
-ADD package.json /cloudantTrigger/
-RUN cd /cloudantTrigger; npm install
+ADD package.json /
+RUN cd / && npm install --production
 
 # App
 ADD provider/. /cloudantTrigger/

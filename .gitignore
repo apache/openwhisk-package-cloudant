@@ -1,7 +1,8 @@
 .gradle
 build/
 node_modules/
-action/*.zip
+actions/event-actions/*.zip
+actions/event-actions/package.json
 .idea
 *.iml
 

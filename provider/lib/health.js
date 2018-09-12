@@ -1,6 +1,5 @@
 var si = require('systeminformation');
 var v8 = require('v8');
-var request = require('request');
 var _ = require('lodash');
 var URL = require('url').URL;
 var constants = require('./constants.js');
@@ -47,8 +46,6 @@ module.exports = function(logger, utils) {
     this.monitor = function(apikey, monitoringInterval) {
         var method = 'monitor';
 
-        var auth = apikey.split(':');
-
         if (triggerName) {
             monitorStatus = Object.assign({}, utils.monitorStatus);
             utils.monitorStatus = {};
@@ -63,8 +60,12 @@ module.exports = function(logger, utils) {
             var existingCanaryID = canaryDocID;
 
             //delete the trigger
-            var uri = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
-            deleteTrigger(existingTriggerID, uri, auth, 0);
+            var triggerData = {
+                apikey: apikey,
+                uri: utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName,
+                triggerID: existingTriggerID
+            };
+            deleteTrigger(triggerData, 0);
 
             //delete the canary doc
             deleteDocFromDB(existingCanaryID, 0);
@@ -81,7 +82,7 @@ module.exports = function(logger, utils) {
 
         var triggerURL = utils.uriHost + '/api/v1/namespaces/_/triggers/' + triggerName;
         var triggerID = `:_:${triggerName}`;
-        createTrigger(triggerURL, auth)
+        createTrigger(triggerURL, apikey)
         .then(info => {
             logger.info(method, triggerID, info);
             var newTrigger = createCloudantTrigger(triggerID, apikey);
@@ -126,17 +127,13 @@ module.exports = function(logger, utils) {
         return newTrigger;
     }
 
-    function createTrigger(triggerURL, auth) {
+    function createTrigger(triggerURL, apikey) {
         var method = 'createTrigger';
 
         return new Promise(function(resolve, reject) {
-            request({
+            utils.authRequest({apikey: apikey}, {
                 method: 'put',
                 uri: triggerURL,
-                auth: {
-                    user: auth[0],
-                    pass: auth[1]
-                },
                 json: true,
                 body: {}
             }, function (error, response) {
@@ -163,23 +160,20 @@ module.exports = function(logger, utils) {
         });
     }
 
-    function deleteTrigger(triggerID, uri, auth, retryCount) {
+    function deleteTrigger(triggerData, retryCount) {
         var method = 'deleteTrigger';
 
-        request({
+        var triggerID = triggerData.triggerID;
+        utils.authRequest(triggerData, {
             method: 'delete',
-            uri: uri,
-            auth: {
-                user: auth[0],
-                pass: auth[1]
-            },
+            uri: triggerData.uri
         }, function (error, response) {
             logger.info(method, triggerID, 'http delete request, STATUS:', response ? response.statusCode : undefined);
             if (error || response.statusCode >= 400) {
                 if (!error && response.statusCode === 409 && retryCount < 5) {
                     logger.info(method, 'attempting to delete trigger again', triggerID, 'Retry Count:', (retryCount + 1));
                     setTimeout(function () {
-                        deleteTrigger(triggerID, uri, auth, (retryCount + 1));
+                        deleteTrigger(triggerData, (retryCount + 1));
                     }, 1000);
                 } else {
                     logger.error(method, triggerID, 'trigger delete request failed');
