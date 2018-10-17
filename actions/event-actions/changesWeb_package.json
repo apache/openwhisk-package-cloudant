@@ -1,5 +1,8 @@
 {
   "name": "changesWebAction",
   "version": "1.0.0",
-  "main": "changesWebAction.js"
+  "main": "changesWebAction.js",
+  "dependencies" : {
+    "@cloudant/cloudant": "3.0.0"
+  }
 }

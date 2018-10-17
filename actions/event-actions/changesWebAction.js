@@ -29,11 +29,10 @@ function main(params) {
         if (!params.host) {
             return common.sendError(400, 'cloudant trigger feed: missing host parameter');
         }
-        if (!params.username) {
-            return common.sendError(400, 'cloudant trigger feed: missing username parameter');
-        }
-        if (!params.password) {
-            return common.sendError(400, 'cloudant trigger feed: missing password parameter');
+        if (!params.iamApiKey) {
+            if (!params.username || !params.password) {
+                return common.sendError(400, 'cloudant trigger feed: Must specify parameter/s of iamApiKey or username/password');
+            }
         }
 
         var query_params;
@@ -56,30 +55,34 @@ function main(params) {
             return common.sendError(400, 'The query_params parameter is only allowed if the filter parameter is defined');
         }
 
-        var newTrigger = {
-            id: triggerID,
-            host: params.host,
-            port: params.port,
-            protocol: params.protocol || 'https',
-            dbname: params.dbname,
-            user: params.username,
-            pass: params.password,
-            apikey: triggerData.apikey,
-            since: params.since,
-            maxTriggers: params.maxTriggers || -1,
-            filter: params.filter,
-            query_params: query_params,
-            status: {
-                'active': true,
-                'dateChanged': Date.now()
-            },
-            additionalData: triggerData.additionalData
-        };
-
         return new Promise(function (resolve, reject) {
+            var newTrigger;
+
             common.verifyTriggerAuth(triggerData, false)
             .then(() => {
                 db = new Database(params.DB_URL, params.DB_NAME);
+
+                newTrigger = {
+                    id: triggerID,
+                    host: params.host,
+                    port: params.port,
+                    protocol: params.protocol || 'https',
+                    dbname: params.dbname,
+                    user: params.username,
+                    pass: params.password,
+                    apikey: triggerData.apikey,
+                    since: params.since,
+                    maxTriggers: params.maxTriggers || -1,
+                    filter: params.filter,
+                    query_params: query_params,
+                    status: {
+                        'active': true,
+                        'dateChanged': Date.now()
+                    },
+                    additionalData: triggerData.additionalData,
+                    iamApiKey: params.iamApiKey,
+                    iamUrl: params.iamUrl || 'https://iam.bluemix.net/identity/token'
+                };
                 return verifyUserDB(newTrigger);
             })
             .then(() => {
@@ -124,6 +127,8 @@ function main(params) {
                         since: doc.since,
                         filter: doc.filter,
                         query_params: doc.query_params,
+                        iamApiKey: doc.iamApiKey,
+                        iamUrl: doc.iamUrl
                     },
                     status: {
                         active: doc.status.active,
@@ -242,17 +247,28 @@ function main(params) {
 }
 
 function verifyUserDB(triggerObj) {
-    var dbURL = `${triggerObj.protocol}://${triggerObj.user}:${triggerObj.pass}@${triggerObj.host}`;
 
-    // add port if specified
-    if (triggerObj.port) {
-        dbURL += ':' + triggerObj.port;
+    var Cloudant = require('@cloudant/cloudant');
+    var cloudant;
+
+    if (triggerObj.iamApiKey) {
+        var dbURL = `${triggerObj.protocol}://${triggerObj.host}`;
+        if (triggerObj.port) {
+            dbURL += ':' + triggerObj.port;
+        }
+        cloudant = new Cloudant({ url: dbURL, plugins: { iamauth: { iamApiKey: triggerObj.iamApiKey, iamTokenUrl: triggerObj.iamUrl } } });
+    }
+    else {
+        var url = `${triggerObj.protocol}://${triggerObj.user}:${triggerObj.pass}@${triggerObj.host}`;
+        if (triggerObj.port) {
+            url += ':' + triggerObj.port;
+        }
+        cloudant = Cloudant(url);
     }
 
     return new Promise(function(resolve, reject) {
         try {
-            var nanoConnection = require('nano')(dbURL);
-            var userDB = nanoConnection.use(triggerObj.dbname);
+            var userDB = cloudant.use(triggerObj.dbname);
             userDB.info(function(err, body) {
                 if (!err) {
                     resolve();

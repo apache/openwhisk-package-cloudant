@@ -132,7 +132,7 @@ class CloudantFeedTests
                         "host" -> myCloudantCreds.host().toJson),
                         expectedExitCode = 246)
             }
-            feedCreationResult.stderr should include("cloudant trigger feed: missing password parameter")
+            feedCreationResult.stderr should include("cloudant trigger feed: Must specify parameter/s of iamApiKey or username/password")
 
     }
 
@@ -163,7 +163,7 @@ class CloudantFeedTests
                         "host" -> myCloudantCreds.host().toJson),
                         expectedExitCode = 246)
             }
-            feedCreationResult.stderr should include("cloudant trigger feed: missing username parameter")
+            feedCreationResult.stderr should include("cloudant trigger feed: Must specify parameter/s of iamApiKey or username/password")
 
     }
 

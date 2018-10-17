@@ -30,17 +30,26 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.createTrigger = function(triggerData) {
         var method = 'createTrigger';
 
-        // both couch and cloudant should have their URLs in the username:password@host format
-        var dbURL = `${triggerData.protocol}://${triggerData.user}:${triggerData.pass}@${triggerData.host}`;
+        var Cloudant = require('@cloudant/cloudant');
+        var cloudantConnection;
 
-        // add port if specified
-        if (triggerData.port) {
-            dbURL += ':' + triggerData.port;
+        if (triggerData.iamApiKey) {
+            var dbURL = `${triggerData.protocol}://${triggerData.host}`;
+            if (triggerData.port) {
+                dbURL += ':' + triggerData.port;
+            }
+            cloudantConnection = new Cloudant({ url: dbURL, plugins: { iamauth: { iamApiKey: triggerData.iamApiKey, iamTokenUrl: triggerData.iamUrl } } });
+        }
+        else {
+            var url = `${triggerData.protocol}://${triggerData.user}:${triggerData.pass}@${triggerData.host}`;
+            if (triggerData.port) {
+                url += ':' + triggerData.port;
+            }
+            cloudantConnection = Cloudant(url);
         }
 
         try {
-            var nanoConnection = require('cloudant-nano')(dbURL);
-            var triggeredDB = nanoConnection.use(triggerData.dbname);
+            var triggeredDB = cloudantConnection.use(triggerData.dbname);
 
             // Listen for changes on this database.
             var feed = triggeredDB.follow({since: triggerData.since, include_docs: false});
@@ -107,7 +116,9 @@ module.exports = function(logger, triggerDB, redisClient) {
             triggersLeft: maxTriggers,
             filter: newTrigger.filter,
             query_params: newTrigger.query_params,
-            additionalData: newTrigger.additionalData
+            additionalData: newTrigger.additionalData,
+            iamApiKey: newTrigger.iamApiKey,
+            iamUrl: newTrigger.iamUrl
         };
 
         return trigger;

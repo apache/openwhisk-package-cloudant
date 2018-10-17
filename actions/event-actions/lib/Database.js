@@ -2,8 +2,8 @@ const common = require('./common');
 
 // constructor for DB object - a thin, promise-loving wrapper around nano
 module.exports = function(dbURL, dbName) {
-    var nano = require('nano')(dbURL);
-    this.db = nano.db.use(dbName);
+    var cloudant = require('@cloudant/cloudant')(dbURL);
+    this.db = cloudant.db.use(dbName);
     var utilsDB = this;
 
     this.getWorkerID = function(availabeWorkers) {
