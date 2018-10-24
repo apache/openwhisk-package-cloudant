@@ -191,11 +191,10 @@ module.exports = function(logger, triggerDB, redisClient) {
 
         logger.info(method, 'firing trigger', triggerData.id, 'with db update');
 
-        var host = 'https://' + self.routerHost + ':' + 443;
+        var host = 'https://' + self.routerHost;
         var uri = host + '/api/v1/namespaces/' + triggerObj.namespace + '/triggers/' + triggerObj.name;
-        var auth = triggerData.apikey.split(':');
 
-        postTrigger(triggerData, form, uri, auth, 0)
+        postTrigger(triggerData, form, uri, 0)
         .then(triggerId => {
             logger.info(method, 'Trigger', triggerId, 'was successfully fired');
             if (isMonitoringTrigger(triggerData.monitor, triggerId)) {
@@ -216,7 +215,7 @@ module.exports = function(logger, triggerDB, redisClient) {
         });
     }
 
-    function postTrigger(triggerData, form, uri, auth, retryCount) {
+    function postTrigger(triggerData, form, uri, retryCount) {
         var method = 'postTrigger';
 
         return new Promise(function(resolve, reject) {
@@ -250,7 +249,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                                 var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
                                 logger.info(method, 'attempting to fire trigger again', triggerData.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
-                                    postTrigger(triggerData, form, uri, auth, (retryCount + 1))
+                                    postTrigger(triggerData, form, uri, (retryCount + 1))
                                     .then(triggerId => {
                                         resolve(triggerId);
                                     })
