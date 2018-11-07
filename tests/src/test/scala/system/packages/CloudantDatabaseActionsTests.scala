@@ -25,7 +25,7 @@ import org.scalatest.junit.JUnitRunner
 import spray.json.DefaultJsonProtocol._
 import spray.json._
 import system.CloudantUtil
-import whisk.utils.JsHelpers
+import org.apache.openwhisk.utils.JsHelpers
 
 @RunWith(classOf[JUnitRunner])
 class CloudantDatabaseActionsTests extends FlatSpec
