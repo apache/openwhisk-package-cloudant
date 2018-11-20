@@ -5,6 +5,7 @@ actions/event-actions/*.zip
 actions/event-actions/package.json
 .idea
 *.iml
+package-lock.json
 
 # Eclipse
 bin/

@@ -49,11 +49,11 @@ function createDatabase() {
     var method = 'createDatabase';
     logger.info(method, 'creating the trigger database');
 
-    var nano = require('cloudant-nano')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
+    var cloudant = require('@cloudant/cloudant')(dbProtocol + '://' + dbUsername + ':' + dbPassword + '@' + dbHost);
 
-    if (nano !== null) {
+    if (cloudant !== null) {
         return new Promise(function (resolve, reject) {
-            nano.db.create(databaseName, function (err, body) {
+            cloudant.db.create(databaseName, function (err, body) {
                 if (!err) {
                     logger.info(method, 'created trigger database:', databaseName);
                 }
@@ -74,7 +74,7 @@ function createDatabase() {
                     }
                 };
 
-                createDesignDoc(nano.db.use(databaseName), viewDDName, viewDD)
+                createDesignDoc(cloudant.db.use(databaseName), viewDDName, viewDD)
                 .then(db => {
                     var filterDD = {
                         filters: {
@@ -114,7 +114,7 @@ function createDatabase() {
         });
     }
     else {
-        Promise.reject('nano provider did not get created.  check db URL: ' + dbHost);
+        Promise.reject('cloudant provider did not get created.  check db URL: ' + dbHost);
     }
 }
 
@@ -181,7 +181,7 @@ function createRedisClient() {
 // Initialize the Provider Server
 function init(server) {
     var method = 'init';
-    var nanoDb;
+    var cloudantDb;
     var providerUtils;
 
     if (server !== null) {
@@ -194,11 +194,11 @@ function init(server) {
 
     createDatabase()
     .then(db => {
-        nanoDb = db;
+        cloudantDb = db;
         return createRedisClient();
     })
     .then(client => {
-        providerUtils = new ProviderUtils(logger, nanoDb, client);
+        providerUtils = new ProviderUtils(logger, cloudantDb, client);
         return providerUtils.initRedis();
     })
     .then(() => {

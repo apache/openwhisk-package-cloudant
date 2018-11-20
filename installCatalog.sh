@@ -51,12 +51,8 @@ echo Installing Cloudant package.
 
 $WSK_CLI -i --apihost "$EDGEHOST" package update --auth "$AUTH" --shared yes cloudant \
     -a description "Cloudant database service" \
-    -a parameters '[ {"name":"bluemixServiceName", "required":false, "bindTime":true}, {"name":"username", "required":true, "bindTime":true, "description": "Your Cloudant username"}, {"name":"password", "required":true, "type":"password", "bindTime":true, "description": "Your Cloudant password"}, {"name":"host", "required":true, "bindTime":true, "description": "This is usually your username.cloudant.com"}, {"name":"dbname", "required":false, "description": "The name of your Cloudant database"}, {"name":"overwrite", "required":false, "type": "boolean"} ]' \
+    -a parameters '[  {"name":"bluemixServiceName", "required":false, "bindTime":true}, {"name":"username", "required":false, "bindTime":true, "description": "Your Cloudant username"}, {"name":"password", "required":false, "type":"password", "bindTime":true, "description": "Your Cloudant password"}, {"name":"host", "required":true, "bindTime":true, "description": "This is usually your username.cloudant.com"}, {"name":"iamApiKey", "required":false}, {"name":"iamUrl", "required":false}, {"name":"dbname", "required":false, "description": "The name of your Cloudant database"}, {"name":"overwrite", "required":false, "type": "boolean"} ]' \
     -p bluemixServiceName 'cloudantNoSQLDB' \
-    -p host '' \
-    -p username '' \
-    -p password '' \
-    -p dbname '' \
     -p apihost "$APIHOST"
 
 # make changesFeed.zip
@@ -73,7 +69,7 @@ $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION"
     -t 90000 \
     -a feed true \
     -a description 'Database change feed' \
-    -a parameters '[ {"name":"dbname", "required":true, "updatable":false}, {"name": "filter", "required":false, "updatable":true, "type": "string", "description": "The name of your Cloudant database filter"}, {"name": "query_params", "required":false, "updatable":true, "description": "JSON Object containing query parameters that are passed to the filter"} ]' \
+    -a parameters '[ {"name":"dbname", "required":true, "updatable":false}, {"name":"iamApiKey", "required":false, "updatable":false}, {"name":"iamUrl", "required":false, "updatable":false}, {"name": "filter", "required":false, "updatable":true, "type": "string", "description": "The name of your Cloudant database filter"}, {"name": "query_params", "required":false, "updatable":true, "description": "JSON Object containing query parameters that are passed to the filter"} ]' \
     -a sampleInput '{ "dbname": "mydb", "filter": "mailbox/by_status", "query_params": {"status": "new"} }'
 
 COMMAND=" -i --apihost $EDGEHOST package update --auth $AUTH --shared no cloudantWeb \
@@ -89,12 +85,13 @@ $WSK_CLI $COMMAND
 
 # make changesWebAction.zip
 cp -f changesWeb_package.json package.json
+npm install
 
 if [ -e changesWebAction.zip ]; then
     rm -rf changesWebAction.zip
 fi
 
-zip -r changesWebAction.zip lib package.json changesWebAction.js
+zip -r changesWebAction.zip lib package.json changesWebAction.js node_modules
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" cloudantWeb/changesWebAction "$PACKAGE_HOME/actions/event-actions/changesWebAction.zip" \
     -a description 'Create/Delete a trigger in cloudant provider Database' \

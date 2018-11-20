@@ -70,13 +70,13 @@ class CloudantFeedWebTests
     it should "reject post of a trigger due to missing username argument" in {
         val params = JsObject(requiredParams.fields - "username")
 
-        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing username parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: Must specify parameter/s of iamApiKey or username/password")), 400)
     }
 
     it should "reject post of a trigger due to missing password argument" in {
         val params = JsObject(requiredParams.fields - "password")
 
-        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: missing password parameter")), 400)
+        makePostCallWithExpectedResult(params, JsObject("error" -> JsString("cloudant trigger feed: Must specify parameter/s of iamApiKey or username/password")), 400)
     }
 
     it should "reject post of a trigger due to missing dbname argument" in {
