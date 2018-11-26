@@ -40,6 +40,7 @@ class CloudantFeedTests
     val wsk = new Wsk
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
+    val maxRetries = System.getProperty("max.retries", "60").toInt
 
     behavior of "Cloudant trigger service"
 
@@ -248,7 +249,7 @@ class CloudantFeedTests
                 response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 
