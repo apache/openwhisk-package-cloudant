@@ -42,7 +42,7 @@ class CloudantHealthFeedTests
     val wsk = new Wsk
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
-    val maxRetries = System.getProperty("max.retries", "60").toInt
+    val maxRetries = System.getProperty("max.retries", "30").toInt
 
     behavior of "Cloudant Health trigger service"
 
@@ -98,7 +98,7 @@ class CloudantHealthFeedTests
                 (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
-            val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+            val activationsBeforeChange = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             activationsBeforeChange should be(0)
 
             // create a test doc in the sample db
@@ -167,7 +167,7 @@ class CloudantHealthFeedTests
                 (rule, name) => rule.create(name, trigger = triggerName, action = actionName)
             }
 
-            val activationsBeforeDelete = wsk.activation.pollFor(N = 1, Some(triggerName)).length
+            val activationsBeforeDelete = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
             activationsBeforeDelete should be(0)
 
             // delete a test doc in the sample db and verify trigger is fired
