@@ -40,7 +40,7 @@ class CloudantFeedTests
     val wsk = new Wsk
     val myCloudantCreds = CloudantUtil.Credential.makeFromVCAPFile("cloudantNoSQLDB", this.getClass.getSimpleName)
     val defaultAction = Some(TestUtils.getTestActionFilename("hello.js"))
-    val maxRetries = System.getProperty("max.retries", "60").toInt
+    val maxRetries = System.getProperty("max.retries", "30").toInt
 
     behavior of "Cloudant trigger service"
 
@@ -243,6 +243,9 @@ class CloudantFeedTests
                     rule.create(name, trigger = triggerName, action = actionName)
                 }
 
+                val activationsBeforeCreate = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
+                activationsBeforeCreate should be(0)
+
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"test\":\"test_doc_1\"}")
@@ -315,13 +318,16 @@ class CloudantFeedTests
                     rule.create(name, trigger = triggerName, action = actionName)
                 }
 
+                val activationsBeforeCreate = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
+                activationsBeforeCreate should be(0)
+
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
                 response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 
@@ -339,7 +345,7 @@ class CloudantFeedTests
                 response3.get("ok").getAsString should be("true")
 
                 println("Checking for new activations (should now have 2)")
-                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length
+                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = maxRetries).length
                 println(s"Found activation size (should be 2): $newActivations")
                 newActivations should be(2)
 
@@ -575,13 +581,16 @@ class CloudantFeedTests
                     rule.create(name, trigger = triggerName, action = actionName)
                 }
 
+                val activationsBeforeCreate = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
+                activationsBeforeCreate should be(0)
+
                 // Create test docs in cloudant and assert that document was inserted successfully
                 println("Creating a test doc-1 in the cloudant")
                 val response1 = CloudantUtil.createDocument(myCloudantCreds, "{\"kind\":\"fruit\", \"type\":\"apple\"}")
                 response1.get("ok").getAsString should be("true")
 
                 println("Checking for activations")
-                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = 30).length
+                val activations = wsk.activation.pollFor(N = 1, Some(triggerName), retries = maxRetries).length
                 println(s"Found activation size (should be exactly 1): $activations")
                 activations should be(1)
 
@@ -608,7 +617,7 @@ class CloudantFeedTests
                 }
 
                 println("Giving the trigger service a moment to process the update")
-                Thread.sleep(10000)
+                Thread.sleep(maxRetries * 1000)
 
                 val runResult = wsk.action.invoke(s"$packageName/$feed", parameters = Map(
                     "triggerName" -> triggerName.toJson,
@@ -634,7 +643,7 @@ class CloudantFeedTests
                 response3.get("ok").getAsString should be("true")
 
                 println("Checking for new activations (should now have 2)")
-                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = 30).length
+                val newActivations = wsk.activation.pollFor(N = 3, Some(triggerName), retries = maxRetries).length
                 println(s"Found activation size (should be 2): $newActivations")
                 newActivations should be(2)
 
