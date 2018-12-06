@@ -242,22 +242,29 @@ module.exports = function(logger, triggerDB, redisClient) {
                 json: form
             }, function(error, response) {
                 try {
-                    logger.info(method, triggerData.id, 'http post request, STATUS:', response ? response.statusCode : response);
-                    if (error || response.statusCode >= 400) {
+                    var statusCode;
+                    if (!error) {
+                        statusCode = response.statusCode;
+                    }
+                    else if (error.statusCode) {
+                        statusCode = error.statusCode;
+                    }
+                    logger.info(method, triggerData.id, 'http post request, STATUS:', statusCode);
+                    if (error || statusCode >= 400) {
                         // only manage trigger fires if they are not infinite
                         if (triggerData.maxTriggers !== -1) {
                             triggerData.triggersLeft++;
                         }
-                        logger.error(method, 'there was an error invoking', triggerData.id, response ? response.statusCode : error);
-                        if (!error && shouldDisableTrigger(response.statusCode)) {
+                        logger.error(method, 'there was an error invoking', triggerData.id, statusCode || error);
+                        if (!error && shouldDisableTrigger(statusCode)) {
                             //disable trigger
-                            var message = 'Automatically disabled after receiving a ' + response.statusCode + ' status code when firing the trigger';
-                            disableTrigger(triggerData.id, response.statusCode, message);
-                            reject('Disabled trigger ' + triggerData.id + ' due to status code: ' + response.statusCode);
+                            var message = 'Automatically disabled after receiving a ' + statusCode + ' status code when firing the trigger';
+                            disableTrigger(triggerData.id, statusCode, message);
+                            reject('Disabled trigger ' + triggerData.id + ' due to status code: ' + statusCode);
                         }
                         else {
                             if (retryCount < retryAttempts ) {
-                                var timeout = response && response.statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
+                                var timeout = statusCode === 429 && retryCount === 0 ? 60000 : 1000 * Math.pow(retryCount + 1, 2);
                                 logger.info(method, 'attempting to fire trigger again', triggerData.id, 'Retry Count:', (retryCount + 1));
                                 setTimeout(function () {
                                     postTrigger(triggerData, form, uri, (retryCount + 1))
