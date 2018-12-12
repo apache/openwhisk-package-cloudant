@@ -242,13 +242,7 @@ module.exports = function(logger, triggerDB, redisClient) {
                 json: form
             }, function(error, response) {
                 try {
-                    var statusCode;
-                    if (!error) {
-                        statusCode = response.statusCode;
-                    }
-                    else if (error.statusCode) {
-                        statusCode = error.statusCode;
-                    }
+                    var statusCode = !error ? response.statusCode : error.statusCode;
                     logger.info(method, triggerData.id, 'http post request, STATUS:', statusCode);
                     if (error || statusCode >= 400) {
                         // only manage trigger fires if they are not infinite
@@ -512,10 +506,9 @@ module.exports = function(logger, triggerDB, redisClient) {
     this.authRequest = function(triggerData, options, cb) {
         var method = 'authRequest';
 
-        authHandler.handleAuth(triggerData)
-        .then(auth => {
-            options.auth = auth;
-            request(options, cb);
+        authHandler.handleAuth(triggerData, options)
+        .then(requestOptions => {
+            request(requestOptions, cb);
         })
         .catch(err => {
             logger.error(method, err);
