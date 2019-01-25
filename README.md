@@ -10,7 +10,23 @@ The `/whisk.system/cloudant` package enables you to work with a Cloudant databas
 | `/whisk.system/cloudant` | package | dbname, host, username, password | Work with a Cloudant database |
 | `/whisk.system/cloudant/read` | action | dbname, id | Read a document from a database |
 | `/whisk.system/cloudant/write` | action | dbname, overwrite, doc | Write a document to a database |
-| `/whisk.system/cloudant/changes` | feed | dbname, filter, query_params, maxTriggers | Fire trigger events on changes to a database |
+| `/whisk.system/cloudant/changes` | feed | dbname, iamApiKey, iamUrl, filter, query_params, maxTriggers | Fire trigger events on changes to a database |
+
+## Firing a trigger on database changes
+
+Use the `changes` feed to configure a service to fire a trigger on every change to your Cloudant database. The parameters are as follows:
+
+- `dbname` (*required*): The name of the Cloudant database.
+
+- `iamApiKey` (*optional*): The IAM API key for the Cloudant database.  If specified will be used as the credentials instead of username and password.
+
+- `iamUrl` (*optional*): The IAM token service url that is used when `iamApiKey` is specified.  Defaults to `https://iam.bluemix.net/identity/token`. 
+
+- `maxTriggers` (*optional*): Stop firing triggers when this limit is reached.  Defaults to infinite.
+
+- `filter` (*optional*): Filter function that is defined on a design document.
+
+- `query_params` (*optional*): Extra query parameters for the filter function.
 
 The following topics walk through setting up a Cloudant database, configuring an associated package, and using the actions and feeds in the `/whisk.system/cloudant` package.
 
