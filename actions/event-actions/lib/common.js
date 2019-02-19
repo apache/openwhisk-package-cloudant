@@ -48,7 +48,6 @@ function createWebParams(rawParams) {
     delete webparams.apihost;
 
     webparams.triggerName = triggerName;
-    webparams.authKey = process.env.__OW_API_KEY;
     config.addAdditionalData(webparams);
 
     return webparams;
