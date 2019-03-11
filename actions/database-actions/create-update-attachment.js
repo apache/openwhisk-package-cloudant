@@ -1,3 +1,6 @@
+// Licensed to the Apache Software Foundation (ASF) under one or more contributor
+// license agreements; and to You under the Apache License, Version 2.0.
+
 /**
  * Create and update attachment for document in Cloudant database:
  * https://docs.cloudant.com/attachments.html#create-/-update
