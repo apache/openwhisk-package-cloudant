@@ -295,3 +295,6 @@ wsk rule create myRule myCloudantTrigger sequenceAction
   The example illustrated above may be used to create an action sequence to read the changed document and call your existing actions.
   Remember to disable any rules that may no longer be valid and create new ones using the action sequence pattern.
 
+# Disclaimer
+
+Apache OpenWhisk Package Cloudant is an effort undergoing incubation at The Apache Software Foundation (ASF), sponsored by the Apache Incubator. Incubation is required of all newly accepted projects until a further review indicates that the infrastructure, communications, and decision making process have stabilized in a manner consistent with other successful ASF projects. While incubation status is not necessarily a reflection of the completeness or stability of the code, it does indicate that the project has yet to be fully endorsed by the ASF.
