@@ -13,6 +13,7 @@
     "lodash": "^3.10.1",
     "request": "^2.83.0",
     "@cloudant/cloudant": "3.0.0",
+    "nano": "8.0.1",
     "json-stringify-safe": "^5.0.1",
     "http-status-codes": "^1.0.5",
     "request-promise": "^1.0.2",
