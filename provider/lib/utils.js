@@ -62,7 +62,7 @@ module.exports = function(logger, triggerDB, redisClient) {
             if (triggerData.port) {
                 url += ':' + triggerData.port;
             }
-            cloudantConnection = Cloudant(url);
+            cloudantConnection = require('nano')(url);
         }
 
         try {
