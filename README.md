@@ -17,7 +17,7 @@
 #
 -->
 
-# Using the Cloudant package
+# Apache OpenWhisk package for Cloudant
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
 [![Build Status](https://travis-ci.org/apache/incubator-openwhisk-package-cloudant.svg?branch=master)](https://travis-ci.org/apache/incubator-openwhisk-package-cloudant)
@@ -294,6 +294,10 @@ wsk rule create myRule myCloudantTrigger sequenceAction
 
   The example illustrated above may be used to create an action sequence to read the changed document and call your existing actions.
   Remember to disable any rules that may no longer be valid and create new ones using the action sequence pattern.
+
+# Building from Source
+
+To build this package from source, execute the command `./gradlew distDocker`
 
 # Disclaimer
 
