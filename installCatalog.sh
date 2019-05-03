@@ -67,7 +67,7 @@ if [ -e changesFeed.zip ]; then
 fi
 
 cp -f changesFeed_package.json package.json
-zip -r changesFeed.zip lib package.json changes.js
+zip -r changesFeed.zip lib package.json changes.js -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" cloudant/changes "$PACKAGE_HOME/actions/event-actions/changesFeed.zip" \
     -t 90000 \
@@ -95,7 +95,7 @@ if [ -e changesWebAction.zip ]; then
     rm -rf changesWebAction.zip
 fi
 
-zip -r changesWebAction.zip lib package.json changesWebAction.js node_modules
+zip -r changesWebAction.zip lib package.json changesWebAction.js node_modules -q
 
 $WSK_CLI -i --apihost "$EDGEHOST" action update --kind "$ACTION_RUNTIME_VERSION" --auth "$AUTH" cloudantWeb/changesWebAction "$PACKAGE_HOME/actions/event-actions/changesWebAction.zip" \
     -a description 'Create/Delete a trigger in cloudant provider Database' \
