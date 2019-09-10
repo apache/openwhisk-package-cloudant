@@ -241,7 +241,8 @@ function init(server) {
         }
     })
     .catch(err => {
-        logger.error(method, 'an error occurred creating database:', err);
+        logger.error(method, 'The following connection error occurred:', err);
+        process.exit(1);
     });
 
 }
