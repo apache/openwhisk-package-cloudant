@@ -57,10 +57,8 @@ function queryIndex(cloudantDb, query) {
   return new Promise(function(resolve, reject) {
     cloudantDb.find(query, function(error, response) {
       if (!error) {
-        console.log('success', response);
         resolve(response);
       } else {
-        console.log('error', error);
         reject(error);
       }
     });

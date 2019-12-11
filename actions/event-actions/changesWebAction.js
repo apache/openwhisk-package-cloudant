@@ -106,7 +106,6 @@ function main(params) {
                 return db.getWorkerID(workers);
             })
             .then((worker) => {
-                console.log('trigger will be assigned to worker ' + worker);
                 newTrigger.worker = worker;
                 return db.createTrigger(triggerID, newTrigger);
             })

@@ -50,10 +50,8 @@ function changes(cloudant, dbName, params) {
   return new Promise(function(resolve, reject) {
     cloudant.db.changes(dbName, params, function(error, response) {
       if (!error) {
-        console.log('success', response);
         resolve(response);
       } else {
-        console.error('error', error);
         reject(error);
       }
     });

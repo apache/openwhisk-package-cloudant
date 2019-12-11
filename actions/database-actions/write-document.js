@@ -112,10 +112,8 @@ function insert(cloudantDb, doc) {
     return new Promise(function(resolve, reject) {
         cloudantDb.insert(doc, function(error, response) {
             if (!error) {
-                console.log('success', response);
                 resolve(response);
             } else {
-                console.log('error', error);
                 reject(error);
             }
         });

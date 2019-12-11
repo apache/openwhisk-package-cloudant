@@ -40,7 +40,6 @@ function main(message) {
 
   //If includeDoc exists and is true, add field to additional params object
   includeDocs = includeDocs.toString().trim().toLowerCase();
-  console.log('includeDocs: ' + includeDocs);
   if(includeDocs === 'true') {
     params.include_docs = 'true';
   }
@@ -55,10 +54,8 @@ function listDesignDocuments(cloudantDb, params) {
   return new Promise(function(resolve, reject) {
     cloudantDb.list(params, function(error, response) {
       if (!error) {
-        console.log('success', response);
         resolve(response);
       } else {
-        console.error("error", error);
         reject(error);
       }
     });
