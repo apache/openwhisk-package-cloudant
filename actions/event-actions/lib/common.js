@@ -43,11 +43,9 @@ function requestHelper(url, input, method) {
             }
             else {
                 if (response) {
-                    console.log('cloudant: Error invoking whisk action:', response.statusCode, body);
                     reject(body);
                 }
                 else {
-                    console.log('cloudant: Error invoking whisk action:', error);
                     reject(error);
                 }
             }
@@ -132,7 +130,7 @@ function constructObject(data) {
                 jsonObject = JSON.parse(data);
             }
             catch (e) {
-                console.log('error parsing ' + data);
+                console.error('error parsing ' + data);
             }
         }
         if (typeof data === 'object') {

@@ -65,10 +65,8 @@ function querySearch(cloudantDb, designDocId, designViewName, search) {
   return new Promise(function(resolve, reject) {
     cloudantDb.search(designDocId, designViewName, search, function(error, response) {
       if (!error) {
-        console.log('success', response);
         resolve(response);
       } else {
-        console.log('error', error);
         reject(error);
       }
     });

@@ -54,10 +54,8 @@ function listAllDocuments(cloudantDb, params) {
   return new Promise(function(resolve, reject) {
     cloudantDb.list(params, function(error, response) {
       if (!error) {
-        console.log('success', response);
         resolve(response);
       } else {
-        console.error("error", error);
         reject(error);
       }
     });
