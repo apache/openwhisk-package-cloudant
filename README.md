@@ -122,6 +122,11 @@ If you're not using OpenWhisk in Bluemix or if you want to set up your Cloudant 
   /myNamespace/myCloudant private binding
   ```
 
+## Using CouchDB
+
+CouchDB databases are compatible with this package but you need to ensure the CouchDB works via HTTPS and runs on the standard HTTP ports.
+
+The simplest way to do this is to place a reverse proxy infront of the CouchDB server and then place a signed SSL certificate on it via a standard provider or a free service like LetsEncrypt.
 
 ## Listening for changes to a Cloudant database
 
