@@ -20,7 +20,7 @@
 # Apache OpenWhisk package for Cloudant
 
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](http://www.apache.org/licenses/LICENSE-2.0)
-[![Build Status](https://travis-ci.org/apache/openwhisk-package-cloudant.svg?branch=master)](https://travis-ci.org/apache/openwhisk-package-cloudant)
+[![Build Status](https://travis-ci.com/apache/openwhisk-package-cloudant.svg?branch=master)](https://travis-ci.com/apache/openwhisk-package-cloudant)
 
 The `/whisk.system/cloudant` package enables you to work with a Cloudant database. It includes the following actions and feeds.
 
