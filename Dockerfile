@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 
-FROM node:10.23.2
+FROM node:10.24.0
 
 # only package.json
 ADD package.json /
