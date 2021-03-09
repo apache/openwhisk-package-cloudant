@@ -90,7 +90,7 @@ class CloudantBindingTests extends FlatSpec
                 println("Fetching cloudant package.")
                 packageGetResult.stdout should include("ok")
 
-                println("""Creating cloudant package binding with "username", "pasword" and "host".""")
+                println("""Creating cloudant package binding with "username", "password" and "host".""")
                 assetHelper.withCleaner(wsk.pkg, packageName) {
                     (pkg, name) =>
                         pkg.bind("/whisk.system/cloudant", name,
