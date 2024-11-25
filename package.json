@@ -10,7 +10,7 @@
     "express": "^4.12.2",
     "winston": "^2.1.1",
     "moment": "^2.11.1",
-    "lodash": "^3.10.1",
+    "lodash": "^4.17.15",
     "request": "^2.83.0",
     "@cloudant/cloudant": "3.0.0",
     "nano": "8.0.1",
